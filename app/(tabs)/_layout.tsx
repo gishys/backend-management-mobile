@@ -59,7 +59,7 @@ export default function TabLayout() {
         name="mine"
         options={{
           title: '我的',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          tabBarIcon: ({ color }) => <Image source={require('../../assets/images/tabs/mine.png')} style={{ width: 26, height: 26 }} />,
         }}
       />
     </Tabs>
