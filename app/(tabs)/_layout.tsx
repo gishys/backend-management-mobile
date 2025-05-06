@@ -2,6 +2,7 @@ import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, Tabs } from 'expo-router';
 import { Pressable } from 'react-native';
+import { Image } from 'expo-image';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
@@ -27,10 +28,10 @@ export default function TabLayout() {
         headerShown: useClientOnlyValue(false, true),
       }}>
       <Tabs.Screen
-        name="index"
+        name="approve"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: '在线审批',
+          tabBarIcon: ({  }) => <Image source={require('../../assets/images/tabs/examine-and-approve.png')} style={{ width: 36, height: 36 }} />,
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -48,9 +49,16 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="applicationCenter"
         options={{
-          title: 'Tab Two',
+          title: '应用中心',
+          tabBarIcon: ({ color }) => <Image source={require('../../assets/images/tabs/application-center.png')} style={{ width: 26, height: 26 }} />,
+        }}
+      />
+      <Tabs.Screen
+        name="mine"
+        options={{
+          title: '我的',
           tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
         }}
       />
