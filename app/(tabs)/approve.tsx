@@ -1,178 +1,170 @@
+import { Badge, BadgeIcon, BadgeText } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Heading } from '@/components/ui/heading';
+import { HStack } from '@/components/ui/hstack';
+import { Text } from '@/components/ui/text';
+import { ProcessInstance } from '@/types/workflow/instance/processInstance.types';
+import { EditIcon, SearchIcon } from '@/components/ui/icon';
+import { debounce } from 'lodash';
+import {
+  Avatar,
+  AvatarBadge,
+  AvatarFallbackText,
+  AvatarImage,
+} from '@/components/ui/avatar';
+import { format } from 'date-fns';
+import { ActivityIndicator, FlatList, RefreshControl } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchMyWkInstances } from '@/api/workflow/instance';
+import { PaginationParams } from '@/types/page.types';
+import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
+const getProcessInstanceStateTitle = (value: any) => {
+  const states: Record<string, string> = {
+    Runnable: '运行中',
+    Suspended: '挂起',
+    Complete: '完成',
+    Terminated: '终止',
+  };
+  return states[value];
+};
 
-//import { Text, View } from '@/components/Themed';
-import { FlatList, TextInput, StyleSheet } from 'react-native';
-import { Card } from "@/components/ui/card"
-import { Heading } from "@/components/ui/heading"
-import { HStack } from "@/components/ui/hstack"
-//import { Image } from "@/components/ui/image"
-//import { Link, LinkText } from "@/components/ui/link"
-import { Text } from "@/components/ui/text"
-//import { Icon, ArrowRightIcon } from "@/components/ui/icon"
-
-
-// 顶部标签导航
-//const TopTab = MaterialTopTabNavigator();
-// 模拟业务数据
-const businessData = [
-  {
-    id: '1',
-    title: '土地转移登记',
-    time: '2023-09-21 17:30:00',
-    currentStep: '复审',
-    handler: '林一',
-    businessNo: '2022082600001',
-    location: '包头市九原区沙河镇健康路1号街坊',
-    owner: '张三'
-  },
-  // 可添加更多类似数据
-];
-const BusinessBaseCard=()=>(
-  <Card className="p-5 rounded-lg max-w-[360px] m-3">
-      {/* <Image
-        source={{
-          uri: "https://gluestack.github.io/public-blog-video-assets/yoga.png",
-        }}
-        className="mb-6 h-[240px] w-full rounded-md aspect-[263/240]"
-        alt="image"
-      /> */}
-      <Text className="text-sm font-normal mb-2 text-typography-700">
-        May 15, 2023
+const BusinessBaseCard = ({ item }: { item: ProcessInstance }) => (
+  <Card className="p-2 rounded-lg m-2" key={item.id}>
+    <Badge className="absolute top-0 right-0 w-[3px] h-[12px] bg-red-600 rounded-tr-lg" />
+    <HStack
+      space="md"
+      reversed={false}
+      className="items-center justify-between mb-2"
+    >
+      <Heading size="md">{item.processType}</Heading>
+      <Text className="text-sm font-normal text-typography-700">
+        {format(new Date(item.receivingTime), 'yyyy-MM-dd HH:mm')}
       </Text>
-      <Heading size="md" className="mb-4">
-        The Power of Positive Thinking
-      </Heading>
-      {/* <Link href="https://gluestack.io/" isExternal>
-        <HStack className="items-center">
-          <LinkText
-            size="sm"
-            className="font-semibold text-info-600 no-underline"
-          >
-            Read Blog
-          </LinkText>
-          <Icon
-            as={ArrowRightIcon}
-            size="sm"
-            className="text-info-600 mt-0.5 ml-0.5"
+    </HStack>
+    <Text className="text-sm font-normal mb-1 text-typography-700">
+      当前环节：{item.processingStepName}
+    </Text>
+    <Text className="text-sm font-normal mb-1 text-typography-700">
+      业务号：{item.reference}
+    </Text>
+    <Text className="text-sm font-normal mb-2 text-typography-700">
+      权利人：{item.data['']}
+    </Text>
+    <HStack
+      space="md"
+      reversed={false}
+      className="items-center justify-between"
+    >
+      <HStack className="items-center justify-between">
+        <Avatar size="sm" className="bg-white-700">
+          <AvatarFallbackText>Jane Doe</AvatarFallbackText>
+          <AvatarImage
+            source={require('../../assets/images/global/default-user.png')}
           />
-        </HStack>
-      </Link> */}
-    </Card>
-)
-// 单个业务卡片组件
-// const BusinessCard = ({ item }:any) => (
-//   <View style={styles.card}>
-//     <Text style={styles.title}>{item.title}</Text>
-//     <Text style={styles.time}>{item.time}</Text>
-//     <View style={styles.details}>
-//       <Text style={styles.detailLabel}>当前环节：</Text>
-//       <Text style={styles.detailText}>{item.currentStep}</Text>
-//     </View>
-//     <View style={styles.details}>
-//       <Text style={styles.detailLabel}>经办人：</Text>
-//       <Text style={styles.detailText}>{item.handler}</Text>
-//     </View>
-//     <View style={styles.details}>
-//       <Text style={styles.detailLabel}>业务号：</Text>
-//       <Text style={styles.detailText}>{item.businessNo}</Text>
-//     </View>
-//     <View style={styles.details}>
-//       <Text style={styles.detailLabel}>坐落：</Text>
-//       <Text style={styles.detailText}>{item.location}</Text>
-//     </View>
-//     <View style={styles.details}>
-//       <Text style={styles.detailLabel}>权利人：</Text>
-//       <Text style={styles.detailText}>{item.owner}</Text>
-//     </View>
-//     <Text style={styles.viewButton}>查看 →</Text>
-//   </View>
-// );
-
-// const OnlineApproval = () => (
-//   <View style={styles.container}>
-//     {/* <TopTab.Navigator>
-//       <TopTab.Screen name="待办件" component={() => ( */}
-//         <View>
-//           <View style={styles.searchBarContainer}>
-//             <TextInput
-//               style={styles.searchBar}
-//               placeholder="请输入要搜索的内容"
-//             />
-//             <Ionicons name="filter" size={24} color="gray" style={styles.filterIcon} />
-//           </View>
-//           <FlatList
-//             data={businessData}
-//             renderItem={({ item }) => <BusinessCard item={item} />}
-//             keyExtractor={(item) => item.id}
-//           />
-//         </View>
-//       {/* )} />
-//       <TopTab.Screen name="已完成" component={() => <View />} />
-//       <TopTab.Screen name="已挂起" component={() => <View />} />
-//     </TopTab.Navigator> */}
-//   </View>
-// );
+          <AvatarBadge size="sm" />
+        </Avatar>
+        <Text className="text-sm font-normal mb-2 text-typography-700 ml-2">
+          {item.recipient}
+        </Text>
+      </HStack>
+      <Badge size="md" variant="solid" action="info">
+        <BadgeText>{getProcessInstanceStateTitle(item.state)}</BadgeText>
+        <BadgeIcon as={EditIcon} className="ml-2" />
+      </Badge>
+    </HStack>
+  </Card>
+);
+const PAGE_SIZE = 10;
 export default function TabOneScreen() {
+  const [data, setData] = useState<ProcessInstance[]>([]);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  // 加载数据
+  const loadData = async (currentPage: number, isRefreshing = false) => {
+    if (loading || (!isRefreshing && !hasMore)) return;
+
+    setLoading(true);
+    try {
+      const params: PaginationParams = {
+        skipCount: (currentPage - 1) * PAGE_SIZE,
+        maxResultCount: PAGE_SIZE,
+      };
+      const newData = await fetchMyWkInstances(params);
+
+      setData((prev) =>
+        isRefreshing ? newData.items : [...prev, ...newData.items],
+      );
+      console.log(newData);
+      setHasMore(newData.items.length === PAGE_SIZE);
+      setPage(currentPage + 1);
+    } catch (error) {
+      console.error('API Error:', error);
+    } finally {
+      setLoading(false);
+      if (isRefreshing) setRefreshing(false);
+    }
+  };
+  hasMore;
+  // 下拉刷新
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    setPage(1);
+    setHasMore(true);
+    loadData(1, true);
+  }, []);
+
+  // 加载更多
+  const onEndReached = useCallback(() => {
+    if (!loading && hasMore) {
+      loadData(page);
+    }
+  }, [page, loading, hasMore]);
+  const debouncedLoadMore = debounce(onEndReached, 500);
+  // 底部加载指示器
+  const ListFooter = () =>
+    loading && !refreshing ? (
+      <ActivityIndicator size="large" style={{ padding: 16 }} />
+    ) : !hasMore ? (
+      <Text style={{ textAlign: 'center', padding: 16 }}>没有更多数据</Text>
+    ) : null;
+  useEffect(() => {
+    let isMounted = true;
+    const initLoad = async () => {
+      if (isMounted) {
+        await loadData(1);
+      }
+    };
+    initLoad();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   return (
-    <BusinessBaseCard/>
+    <>
+      <Input className="m-2">
+        <InputSlot className="pl-3">
+          <InputIcon as={SearchIcon} />
+        </InputSlot>
+        <InputField
+          placeholder="输入要搜索的内容"
+          onChangeText={() => {
+            onRefresh();
+          }}
+        />
+      </Input>
+      <FlatList
+        data={data}
+        renderItem={BusinessBaseCard}
+        keyExtractor={(item) => item.id.toString()}
+        onEndReached={debouncedLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={ListFooter}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      />
+    </>
   );
 }
-
-// 样式定义
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f0f8ff' // 浅蓝色背景
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    margin: 20
-  },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    margin: 10,
-    backgroundColor: 'white',
-    padding: 10,
-    borderRadius: 20
-  },
-  searchBar: {
-    flex: 1,
-    marginRight: 10
-  },
-  filterIcon: {
-    marginHorizontal: 10
-  },
-  card: {
-    backgroundColor: 'white',
-    margin: 15,
-    padding: 15,
-    borderRadius: 10
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5
-  },
-  time: {
-    fontSize: 14,
-    color: 'gray',
-    marginBottom: 10
-  },
-  details: {
-    flexDirection: 'row',
-    marginBottom: 5
-  },
-  detailLabel: {
-    fontWeight: 'bold',
-    width: 80
-  },
-  detailText: {
-    flex: 1
-  },
-  viewButton: {
-    color: 'blue',
-    textAlign: 'right',
-    marginTop: 10
-  }
-});
