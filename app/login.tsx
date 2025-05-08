@@ -16,7 +16,9 @@ import {
 import { useForm, Controller } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { useAuth } from '@/context/AuthProvider';
+import { loginAsync } from '@/api/account';
+import { router } from 'expo-router';
 type FormData = {
   email: string;
   password: string;
@@ -30,17 +32,21 @@ const LoginScreen = ({ navigation }: any) => {
   } = useForm<FormData>();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
     try {
       // 模拟API调用
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      var result = await loginAsync({
+        username: data.email,
+        password: data.password,
+      });
       console.log('Login Data:', data);
-      // navigation.navigate('Home');
-      Alert.alert('登录成功', '欢迎回来！');
+      login(result.access_token);
+      router.push('/(tabs)/approve');
     } catch (error) {
-      Alert.alert('错误', '登录失败，请重试');
+      Alert.alert('错误', '登录失败!');
     } finally {
       setIsLoading(false);
     }
@@ -69,11 +75,7 @@ const LoginScreen = ({ navigation }: any) => {
               <Controller
                 control={control}
                 rules={{
-                  required: '邮箱不能为空',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: '无效的邮箱地址',
-                  },
+                  required: '用户名不能为空',
                 }}
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={styles.inputContainer}>
@@ -85,7 +87,7 @@ const LoginScreen = ({ navigation }: any) => {
                     />
                     <TextInput
                       style={styles.input}
-                      placeholder="邮箱"
+                      placeholder="用户名"
                       placeholderTextColor="#ccc"
                       keyboardType="email-address"
                       autoCapitalize="none"

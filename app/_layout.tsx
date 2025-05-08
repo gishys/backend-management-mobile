@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { AuthProvider, useAuth } from '@/context/AuthProvider';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -21,7 +22,7 @@ export {
 
 export const unstable_settings = {
   // Ensure that reloading on `/modal` keeps a back button present.
-  initialRouteName: 'login',
+  initialRouteName: '(tabs)',
 };
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -49,24 +50,29 @@ export default function RootLayout() {
   }
 
   return (
-    <GluestackUIProvider mode="light">
-      <RootLayoutNav />
-    </GluestackUIProvider>
+    <AuthProvider>
+      <GluestackUIProvider mode="light">
+        <RootLayoutNav />
+      </GluestackUIProvider>
+    </AuthProvider>
   );
 }
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-
+  const { authState } = useAuth();
   return (
-    <GluestackUIProvider mode="light">
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false }}>
+        {authState.isAuthenticated ? (
+          <>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+          </>
+        ) : (
           <Stack.Screen name="login" options={{ headerShown: false }} />
-        </Stack>
-      </ThemeProvider>
-    </GluestackUIProvider>
+        )}
+      </Stack>
+    </ThemeProvider>
   );
 }

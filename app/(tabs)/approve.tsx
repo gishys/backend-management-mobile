@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { fetchMyWkInstances } from '@/api/workflow/instance';
 import { PaginationParams } from '@/types/page.types';
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
+import RouteGuard from '../../components/Common/RouteGuard';
 const getProcessInstanceStateTitle = (value: any) => {
   const states: Record<string, string> = {
     Runnable: '运行中',
@@ -143,28 +144,30 @@ export default function TabOneScreen() {
   }, []);
   return (
     <>
-      <Input className="m-2">
-        <InputSlot className="pl-3">
-          <InputIcon as={SearchIcon} />
-        </InputSlot>
-        <InputField
-          placeholder="输入要搜索的内容"
-          onChangeText={() => {
-            onRefresh();
-          }}
+      <RouteGuard>
+        <Input className="m-2">
+          <InputSlot className="pl-3">
+            <InputIcon as={SearchIcon} />
+          </InputSlot>
+          <InputField
+            placeholder="输入要搜索的内容"
+            onChangeText={() => {
+              onRefresh();
+            }}
+          />
+        </Input>
+        <FlatList
+          data={data}
+          renderItem={BusinessBaseCard}
+          keyExtractor={(item) => item.id.toString()}
+          onEndReached={debouncedLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={ListFooter}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
         />
-      </Input>
-      <FlatList
-        data={data}
-        renderItem={BusinessBaseCard}
-        keyExtractor={(item) => item.id.toString()}
-        onEndReached={debouncedLoadMore}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={ListFooter}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      />
+      </RouteGuard>
     </>
   );
 }
