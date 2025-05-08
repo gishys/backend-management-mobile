@@ -12,7 +12,7 @@ const apiClient = axios.create({
 // 请求拦截器（添加 Token）
 apiClient.interceptors.request.use(async (config) => {
   (config as any).metadata = { startTime: Date.now() };
-  const token = await AsyncStorage.getItem('authToken');
+  const token = await AsyncStorage.getItem('userToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

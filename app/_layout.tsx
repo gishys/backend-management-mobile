@@ -66,11 +66,18 @@ function RootLayoutNav() {
       <Stack screenOptions={{ headerShown: false }}>
         {authState.isAuthenticated ? (
           <>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen
+              name="(tabs)"
+              options={{ headerShown: false, animation: 'fade_from_bottom' }}
+            />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="processdetails" options={{}} />
           </>
         ) : (
-          <Stack.Screen name="login" options={{ headerShown: false }} />
+          <Stack.Screen
+            name="login"
+            options={{ headerShown: false, header: undefined }}
+          />
         )}
       </Stack>
     </ThemeProvider>

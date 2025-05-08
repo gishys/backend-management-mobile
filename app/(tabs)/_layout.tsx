@@ -6,7 +6,6 @@ import { Image } from 'expo-image';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -25,13 +24,20 @@ export default function TabLayout() {
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         // Disable the static render of the header on web
         // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        //headerShown: useClientOnlyValue(false, true),
+        headerShown: true,
+      }}
+    >
       <Tabs.Screen
         name="approve"
         options={{
           title: '在线审批',
-          tabBarIcon: ({  }) => <Image source={require('../../assets/images/tabs/examine-and-approve.png')} style={{ width: 36, height: 36 }} />,
+          tabBarIcon: ({}) => (
+            <Image
+              source={require('../../assets/images/tabs/examine-and-approve.png')}
+              style={{ width: 36, height: 36 }}
+            />
+          ),
           headerRight: () => (
             <Link href="/modal" asChild>
               <Pressable>
@@ -52,14 +58,24 @@ export default function TabLayout() {
         name="applicationCenter"
         options={{
           title: '应用中心',
-          tabBarIcon: ({ color }) => <Image source={require('../../assets/images/tabs/application-center.png')} style={{ width: 26, height: 26 }} />,
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require('../../assets/images/tabs/application-center.png')}
+              style={{ width: 26, height: 26 }}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="mine"
         options={{
           title: '我的',
-          tabBarIcon: ({ color }) => <Image source={require('../../assets/images/tabs/mine.png')} style={{ width: 26, height: 26 }} />,
+          tabBarIcon: ({ color }) => (
+            <Image
+              source={require('../../assets/images/tabs/mine.png')}
+              style={{ width: 26, height: 26 }}
+            />
+          ),
         }}
       />
     </Tabs>
