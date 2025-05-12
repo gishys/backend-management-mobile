@@ -1,116 +1,17 @@
-import { Badge, BadgeIcon, BadgeText } from '@/components/ui/badge';
-import { Card } from '@/components/ui/card';
-import { Heading } from '@/components/ui/heading';
-import { HStack } from '@/components/ui/hstack';
 import { Text } from '@/components/ui/text';
 import { ProcessInstance } from '@/types/workflow/instance/processInstance.types';
-import { EditIcon, SearchIcon } from '@/components/ui/icon';
-import { debounce } from 'lodash';
-import {
-  Avatar,
-  AvatarBadge,
-  AvatarFallbackText,
-  AvatarImage,
-} from '@/components/ui/avatar';
-import { format } from 'date-fns';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { SearchIcon } from '@/components/ui/icon';
+import { ActivityIndicator, FlatList, RefreshControl } from 'react-native';
 import { useCallback, useEffect, useState } from 'react';
 import { fetchMyWkInstances } from '@/api/workflow/instance';
 import { PaginationParams } from '@/types/page.types';
 import { Input, InputField, InputIcon, InputSlot } from '@/components/ui/input';
-import { useRouter } from 'expo-router';
 import RouteGuard from '../../components/Common/RouteGuard';
 import React from 'react';
-
-const getProcessInstanceStateTitle = (value: any) => {
-  const states: Record<string, string> = {
-    Runnable: '运行中',
-    Suspended: '挂起',
-    Complete: '完成',
-    Terminated: '终止',
-  };
-  return states[value];
-};
-
-const BusinessBaseCard = React.memo(({ item }: { item: ProcessInstance }) => {
-  const route = useRouter();
-  const navigateProcessDetails = (id: string) => {
-    route.push({
-      pathname: '/processdetails',
-      params: { wkInstanceId: id },
-    });
-  };
-  const debouncedLoadMore = debounce(navigateProcessDetails, 500);
-  return (
-    <TouchableOpacity
-      activeOpacity={0.7}
-      onPress={() => {
-        debouncedLoadMore(item.id);
-      }}
-      className="flex-1"
-    >
-      <View style={{ flex: 1, minHeight: 120 }}>
-        <Card
-          className="p-2 rounded-lg m-2"
-          key={item.id}
-          style={{ minHeight: 120, overflow: 'visible', flexShrink: 0 }}
-        >
-          <Badge className="absolute top-0 right-0 w-[3px] h-[12px] bg-red-600 rounded-tr-lg" />
-          <HStack
-            space="md"
-            reversed={false}
-            className="items-center justify-between mb-2"
-          >
-            <Heading size="md">{item.processType}</Heading>
-            <Text className="text-sm font-normal text-typography-700">
-              {format(new Date(item.receivingTime), 'yyyy-MM-dd HH:mm')}
-            </Text>
-          </HStack>
-          <Text className="text-sm font-normal mb-1 text-typography-700">
-            当前环节：{item.processingStepName}
-          </Text>
-          <Text className="text-sm font-normal mb-1 text-typography-700">
-            业务号：{item.reference}
-          </Text>
-          <Text className="text-sm font-normal mb-2 text-typography-700">
-            权利人：{item.data['']}
-          </Text>
-          <HStack
-            space="md"
-            reversed={false}
-            className="items-center justify-between"
-          >
-            <HStack className="items-center justify-between">
-              <Avatar size="sm" className="bg-white-700">
-                <AvatarFallbackText>Jane Doe</AvatarFallbackText>
-                <AvatarImage
-                  source={require('../../assets/images/global/default-user.png')}
-                />
-                <AvatarBadge size="sm" />
-              </Avatar>
-              <Text className="text-sm font-normal mb-2 text-typography-700 ml-2">
-                {item.recipient}
-              </Text>
-            </HStack>
-            <Badge size="md" variant="solid" action="info">
-              <BadgeText>{getProcessInstanceStateTitle(item.state)}</BadgeText>
-              <BadgeIcon as={EditIcon} className="ml-2" />
-            </Badge>
-          </HStack>
-        </Card>
-      </View>
-    </TouchableOpacity>
-  );
-});
+import ProcessInstanceCard from '@/components/workflow/ProcessInstanceCard';
 
 const PAGE_SIZE = 10;
-export default function TabOneScreen() {
+export default function OnlineApprove() {
   const [data, setData] = useState<ProcessInstance[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -140,6 +41,16 @@ export default function TabOneScreen() {
           ? newData.items
           : [...prev, ...newData.items];
         console.log('更新后数据长度:', updatedData.length);
+        console.log(
+          'Data updated:',
+          isRefreshing ? 'Refresh' : 'Load more',
+          'prev:',
+          prev.length,
+          'new:',
+          newData.items.length,
+          'total:',
+          updatedData.length,
+        );
         return updatedData;
       });
 
@@ -181,21 +92,6 @@ export default function TabOneScreen() {
     loadData(true);
   }, []);
 
-  const handleMomentumScrollEnd = useCallback(
-    ({ nativeEvent }: any) => {
-      const { contentOffset, contentSize, layoutMeasurement } = nativeEvent;
-      const paddingToBottom = 20;
-      const isNearBottom =
-        contentOffset.y + layoutMeasurement.height >=
-        contentSize.height - paddingToBottom;
-
-      if (isNearBottom && !loading && hasMore) {
-        loadData(false);
-      }
-    },
-    [loading, hasMore],
-  );
-
   return (
     <RouteGuard>
       <Input className="m-2">
@@ -209,30 +105,20 @@ export default function TabOneScreen() {
           }}
         />
       </Input>
-      <FlatList
+      <FlatList<ProcessInstance>
         data={data}
-        renderItem={({ item }) => <BusinessBaseCard item={item} />}
-        keyExtractor={(item) => `${item.id}-${data.length}`}
+        renderItem={({ item }) => <ProcessInstanceCard item={item} />}
+        keyExtractor={(item) => item.id}
         onEndReached={onEndReached}
-        onEndReachedThreshold={0.1}
         ListFooterComponent={ListFooter}
+        initialNumToRender={PAGE_SIZE}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={['#6366f1']}
-            progressViewOffset={50}
           />
         }
-        contentContainerStyle={{
-          paddingBottom: 20, // 确保底部有空间触发加载
-        }}
-        // 添加以下 iOS 特定配置
-        removeClippedSubviews={false}
-        directionalLockEnabled={true}
-        keyboardShouldPersistTaps="handled"
-        style={{ flexGrow: 1 }} // 确保列表填充容器
-        onMomentumScrollEnd={handleMomentumScrollEnd}
       />
     </RouteGuard>
   );
