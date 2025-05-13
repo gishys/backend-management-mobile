@@ -157,6 +157,7 @@ const formatFieldValue = (
   field: FormField,
   dictionary?: Record<string, string>,
 ) => {
+  if (!field.value) return undefined;
   // 处理字典翻译
   if (field.type === 'select' && field.valueOptions) {
     return field.valueOptions[field.value.toString()] || field.value;

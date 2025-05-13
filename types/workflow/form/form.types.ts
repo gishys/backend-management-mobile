@@ -10,7 +10,7 @@ export type FieldType =
 export interface FormField {
   id: string;
   label: string;
-  value: string | number;
+  value?: string | number;
   type?: FieldType;
   required?: boolean; // 必填标识
   valueOptions?: Record<string, string>; // 用于select的字典
@@ -19,7 +19,9 @@ export interface FormField {
 }
 
 export interface FormSection {
+  id: string;
   title: string;
-  description?: string; // 分组描述
+  sort?: number;
+  description?: string;
   fields: FormField[];
 }
