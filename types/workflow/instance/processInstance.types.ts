@@ -179,3 +179,31 @@ export type AttachCatalogueCreateDto = {
  * 8:档案附件，reference为受理编号;
  */
 export type CatalogueReferenceType = 1 | 2 | 3 | 5 | 6 | 7 | 8 | 9;
+
+export type AttachCatalogue = {
+  id: string;
+  reference: string;
+  referenceType: CatalogueReferenceType;
+  attachReceiveType: number;
+  catalogueName: string;
+  attachCount?: number;
+  pageCount?: number;
+  isRequired?: boolean;
+  sequenceNumber: number;
+  isStatic: boolean;
+  creationTime: string;
+  creatorId: string;
+  children?: AttachCatalogue[];
+  attachFiles?: AttachFile[];
+};
+
+export type AttachFile = {
+  id: string;
+  fileName: string;
+  fileAlias: string;
+  filePath: string;
+  fileType: string;
+  fileSize: number;
+  downloadTimes: number;
+  sequenceNumber: number;
+};

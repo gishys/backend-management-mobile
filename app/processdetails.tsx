@@ -1,4 +1,5 @@
 import { fetchMyWkInstance } from '@/api/workflow/instance';
+import FormViewer from '@/components/form/FormViewer';
 import ReadOnlyForm from '@/components/form/ReadOnlyForm';
 import { FormSection } from '@/types/workflow/form/form.types';
 import { WorkflowInstance } from '@/types/workflow/instance/processInstance.types';
@@ -43,7 +44,7 @@ export default function ProcessDetails() {
   }, []);
   return (
     <>
-      <ReadOnlyForm sections={formSections} />
+      <FormViewer sections={formSections} />
     </>
   );
 }
