@@ -1,6 +1,8 @@
 import apiClient from '@/api/client';
 import { PagedResultDto, PaginationParams } from '@/types/page.types';
 import {
+  AttachCatalogue,
+  AttachCatalogueCreateDto,
   ProcessInstance,
   WorkflowInstance,
 } from '@/types/workflow/instance/processInstance.types';
@@ -24,3 +26,27 @@ export const fetchMyWkInstance = async (params: {
   >('/hxworkflow/workflow/workflowinstance', { params });
   return response.data;
 };
+
+/**创建附件目录(many) */
+export async function createManyCatalogueAsync(
+  mode: number,
+  data: AttachCatalogueCreateDto[],
+) {
+  const response = await apiClient.post<
+    AttachCatalogue[] | { error?: { message?: string } }
+  >(`/api/app/attachment/createmany?mode=${mode}`, data);
+  return response.data;
+}
+
+/**通过关联编号获取附件信息 */
+export async function fetchAttachmentByReferenceAsync(
+  data: {
+    reference: string;
+    referenceType: number;
+  }[],
+) {
+  const response = await apiClient.post<
+    AttachCatalogue[] | { error?: { message?: string } }
+  >(`/api/app/attachment/findbyreference`, data);
+  return response.data;
+}

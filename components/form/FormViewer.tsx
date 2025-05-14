@@ -24,7 +24,8 @@ const getOptionLabel = (
 // 表单字段组件
 const FieldRenderer: React.FC<{ field: FormField }> = ({ field }) => {
   const renderValue = () => {
-    if (!field.value && field.value !== 0) return '-';
+    if (!field.value && field.value !== 0)
+      return <Text style={styles.valueText}>-</Text>;
 
     switch (field.type) {
       case 'date':

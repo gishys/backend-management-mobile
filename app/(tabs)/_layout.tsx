@@ -6,6 +6,7 @@ import { Image } from 'expo-image';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -32,11 +33,8 @@ export default function TabLayout() {
         name="approve"
         options={{
           title: '在线审批',
-          tabBarIcon: ({}) => (
-            <Image
-              source={require('../../assets/images/tabs/examine-and-approve.png')}
-              style={{ width: 36, height: 36 }}
-            />
+          tabBarIcon: ({ color }) => (
+            <MaterialIcons name="approval" size={25} color={color} />
           ),
           headerRight: () => (
             <Link href="/modal" asChild>
@@ -59,10 +57,7 @@ export default function TabLayout() {
         options={{
           title: '应用中心',
           tabBarIcon: ({ color }) => (
-            <Image
-              source={require('../../assets/images/tabs/application-center.png')}
-              style={{ width: 26, height: 26 }}
-            />
+            <AntDesign name="appstore-o" size={25} color={color} />
           ),
         }}
       />
@@ -71,10 +66,7 @@ export default function TabLayout() {
         options={{
           title: '我的',
           tabBarIcon: ({ color }) => (
-            <Image
-              source={require('../../assets/images/tabs/mine.png')}
-              style={{ width: 26, height: 26 }}
-            />
+            <FontAwesome name="user" size={25} color={color} />
           ),
         }}
       />
