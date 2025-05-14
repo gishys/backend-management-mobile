@@ -47,6 +47,7 @@
     "react-hook-form": "^7.56.2",
     "react-native": "0.79.2",
     "react-native-css-interop": "^0.1.22",
+    "react-native-image-zoom-viewer": "^3.0.1",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "~4.10.0",

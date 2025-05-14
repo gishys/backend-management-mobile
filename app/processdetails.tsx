@@ -27,6 +27,7 @@ import {
   View,
 } from 'react-native';
 import { Heading } from '@/components/ui/heading';
+import ProcessInstanceDetailsTabs from '@/components/workflow/ProcessInstanceDetailsTabs';
 
 export default function ProcessDetails() {
   const params = useLocalSearchParams();
@@ -128,6 +129,7 @@ export default function ProcessDetails() {
           </DrawerBody>
         </DrawerContent>
       </Drawer>
+      <ProcessInstanceDetailsTabs />
     </>
   );
 }

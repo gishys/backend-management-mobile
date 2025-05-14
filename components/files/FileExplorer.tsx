@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { Key, useState } from 'react';
 import {
   View,
   Text,
@@ -7,23 +7,18 @@ import {
   Animated,
   ScrollView,
   Dimensions,
+  ActivityIndicator,
+  Modal,
+  Platform,
+  SafeAreaView,
 } from 'react-native';
 import { AntDesign, MaterialIcons, Fontisto } from '@expo/vector-icons';
 import {
   AttachCatalogue,
   AttachFile,
 } from '@/types/workflow/instance/processInstance.types';
-import {
-  Modal,
-  ModalBackdrop,
-  ModalContent,
-  ModalCloseButton,
-  ModalHeader,
-  ModalBody,
-} from '@/components/ui/modal';
-import { Heading } from '../ui/heading';
-import { Icon, CloseIcon } from '@/components/ui/icon';
-import { Image } from 'expo-image';
+import ImageViewer from 'react-native-image-zoom-viewer';
+import { IImageInfo } from 'react-native-image-zoom-viewer/built/image-viewer.type';
 
 type TreeItemProps = {
   item: AttachCatalogue;
@@ -277,7 +272,7 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
 }) => {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isFullScreen, setIsFullScreen] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<IImageInfo[]>([]);
   const handleToggle = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
@@ -297,49 +292,42 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
             onToggle={handleToggle}
             expandedIds={expandedIds}
             onFilePreView={(urls) => {
-              setImages(urls.map((url) => url));
+              console.log(urls);
+              setImages(urls.map((url) => ({ url })));
               setIsFullScreen(true);
             }}
           />
         ))}
       </ScrollView>
-      <Modal
-        isOpen={isFullScreen}
-        onClose={() => {
-          setIsFullScreen(false);
-        }}
-        size="full"
-        style={{ height: '100%' }}
-      >
-        <ModalBackdrop />
-        <ModalContent>
-          <ModalHeader>
-            <Heading size="md" className="text-typography-950">
-              查看图片
-            </Heading>
-            <ModalCloseButton>
-              <Icon
-                as={CloseIcon}
-                size="md"
-                className="stroke-background-400 group-[:hover]/modal-close-button:stroke-background-700 group-[:active]/modal-close-button:stroke-background-900 group-[:focus-visible]/modal-close-button:stroke-background-900"
-              />
-            </ModalCloseButton>
-          </ModalHeader>
-          <ModalBody>
-            <View style={styles.imageBodyContainer}>
-              <Image
-                style={styles.image}
-                source={images.length > 0 ? images[0] : undefined}
-                placeholder={
-                  '|rF?hV%2WCj[ayj[a|j[az_NaeWBj@ayfRayfQfQM{M|azj[azf6fQfQfQIpWXofj[ayj[j[fQayWCoeoeaya}j[ayfQa{oLj?j[WVj[ayayj[fQoff7azayj[ayj[j[ayofayayayj[fQj[ayayj[ayfjj[j[ayjuayj['
-                }
-                contentFit="cover"
-                transition={1000}
-                onError={(e) => console.log('Image error:', e.error)}
-              />
-            </View>
-          </ModalBody>
-        </ModalContent>
+      <Modal visible={isFullScreen} transparent={true}>
+        <View style={styles.modalContainer}>
+          {/* 关闭按钮（绝对定位在右上角） */}
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setIsFullScreen(false)}
+            activeOpacity={0.7}
+          >
+            <AntDesign name="closecircle" size={28} color="#FFF" />
+          </TouchableOpacity>
+
+          {/* 图片查看器容器 */}
+          <View style={styles.viewerContainer}>
+            <ImageViewer
+              imageUrls={images}
+              enableSwipeDown
+              onSwipeDown={() => setIsFullScreen(false)}
+              enableImageZoom
+              style={styles.viewer}
+              renderIndicator={(c, a) => {
+                return (
+                  <Text style={{ color: 'white', paddingTop: 60 }}>
+                    {c}/{a}
+                  </Text>
+                );
+              }}
+            />
+          </View>
+        </View>
       </Modal>
     </>
   );
@@ -347,16 +335,29 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
 
 // 样式表
 const styles = StyleSheet.create({
-  imageBodyContainer: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    position: 'relative', // 关键：为绝对定位子元素提供定位基准
   },
-  image: {
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height - 300,
-    backgroundColor: '#0553',
+  closeButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 50 : 30, // 适配不同状态栏高度
+    right: 20,
+    zIndex: 9999, // 确保按钮位于最顶层
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3,
+    elevation: 5, // Android 阴影
+  },
+  viewerContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    marginTop: Platform.OS === 'ios' ? 40 : 20, // 为按钮留出空间
+  },
+  viewer: {
+    flex: 1,
   },
   container: {
     flex: 1,
