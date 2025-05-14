@@ -304,8 +304,11 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
           {/* 关闭按钮（绝对定位在右上角） */}
           <TouchableOpacity
             style={styles.closeButton}
-            onPress={() => setIsFullScreen(false)}
+            onPress={() => {
+              setIsFullScreen(false);
+            }}
             activeOpacity={0.7}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           >
             <AntDesign name="closecircle" size={28} color="#FFF" />
           </TouchableOpacity>
@@ -318,11 +321,13 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
               onSwipeDown={() => setIsFullScreen(false)}
               enableImageZoom
               style={styles.viewer}
-              renderIndicator={(c, a) => {
+              renderIndicator={(currentIndex, allSize) => {
                 return (
-                  <Text style={{ color: 'white', paddingTop: 60 }}>
-                    {c}/{a}
-                  </Text>
+                  <View style={styles.indicatorContainer}>
+                    <Text style={styles.indicatorText}>
+                      {currentIndex ? currentIndex : 0}/{allSize}
+                    </Text>
+                  </View>
                 );
               }}
             />
@@ -335,6 +340,20 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
 
 // 样式表
 const styles = StyleSheet.create({
+  indicatorContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40, // 适配不同平台状态栏高度
+    alignSelf: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  indicatorText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
   modalContainer: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.9)',
@@ -342,7 +361,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30, // 适配不同状态栏高度
+    top: Platform.OS === 'ios' ? 60 : 30, // 适配不同状态栏高度
     right: 20,
     zIndex: 9999, // 确保按钮位于最顶层
     shadowColor: '#000',
