@@ -16,12 +16,23 @@ import {
   DrawerHeader,
   DrawerBody,
 } from '@/components/ui/drawer';
+import {
+  FormControl,
+  FormControlError,
+  FormControlErrorText,
+  FormControlErrorIcon,
+  FormControlLabel,
+  FormControlLabelText,
+  FormControlHelper,
+  FormControlHelperText,
+} from '@/components/ui/form-control';
 import { AntDesign } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Heading } from '../ui/heading';
-import { CloseIcon, Icon } from '../ui/icon';
+import { AlertCircleIcon, CloseIcon, Icon } from '../ui/icon';
 import { Pressable } from '../ui/pressable';
 import { Center } from '../ui/center';
+import { Input, InputField } from '../ui/input';
 
 export default function ApprovalConfirm({
   visible,
@@ -31,6 +42,8 @@ export default function ApprovalConfirm({
   setVisible: (visible: boolean) => void;
 }) {
   const navigation = useNavigation();
+  const [isInvalid, setIsInvalid] = useState(false);
+  const [inputValue, setInputValue] = useState('12345');
   const [formData, setFormData] = useState({
     comment: '',
     notifyApplicant: true,
@@ -96,6 +109,36 @@ export default function ApprovalConfirm({
               </View>
               {/* 流程设置卡片 */}
               <View style={styles.card}>
+                <FormControl
+                  isInvalid={isInvalid}
+                  size="md"
+                  isDisabled={false}
+                  isReadOnly={false}
+                  isRequired={false}
+                >
+                  <FormControlLabel>
+                    <FormControlLabelText>Password</FormControlLabelText>
+                  </FormControlLabel>
+                  <Input className="my-1" size="md">
+                    <InputField
+                      type="password"
+                      placeholder="password"
+                      value={inputValue}
+                      onChangeText={(text) => setInputValue(text)}
+                    />
+                  </Input>
+                  <FormControlHelper>
+                    <FormControlHelperText>
+                      Must be atleast 6 characters.
+                    </FormControlHelperText>
+                  </FormControlHelper>
+                  <FormControlError>
+                    <FormControlErrorIcon as={AlertCircleIcon} />
+                    <FormControlErrorText>
+                      Atleast 6 characters are required.
+                    </FormControlErrorText>
+                  </FormControlError>
+                </FormControl>
                 <Text style={styles.cardTitle}>流程设置</Text>
                 <TouchableOpacity
                   style={styles.optionItem}
