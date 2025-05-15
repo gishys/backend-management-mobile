@@ -37,7 +37,7 @@ export default function TabLayout() {
             <MaterialIcons name="approval" size={25} color={color} />
           ),
           headerRight: () => (
-            <Link href="/modal" asChild>
+            <Link href="/approvaldetails" asChild>
               <Pressable>
                 {({ pressed }) => (
                   <FontAwesome

@@ -21,13 +21,14 @@ import { useEffect, useState } from 'react';
 import {
   Animated,
   Button,
+  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { Heading } from '@/components/ui/heading';
-import ProcessInstanceDetailsTabs from '@/components/workflow/ProcessInstanceDetailsTabs';
+import { AntDesign, Feather } from '@expo/vector-icons';
 
 export default function ProcessDetails() {
   const params = useLocalSearchParams();
@@ -122,19 +123,121 @@ export default function ProcessDetails() {
         <DrawerBackdrop />
         <DrawerContent>
           <DrawerHeader>
-            <Heading size="lg">查看附件</Heading>
+            <Heading size="md">查看附件</Heading>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => {
+                setDrawerVisible(false);
+              }}
+              activeOpacity={0.7}
+              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
+              <AntDesign name="closecircle" size={20} color="#000" />
+            </TouchableOpacity>
           </DrawerHeader>
           <DrawerBody>
             <FileExplorer data={attachments} />
           </DrawerBody>
         </DrawerContent>
       </Drawer>
-      <ProcessInstanceDetailsTabs />
+      <SafeAreaView style={styles.buttonContainer}>
+        <View style={styles.buttonGroup}>
+          {/* 驳回按钮 */}
+          <TouchableOpacity
+            style={[styles.button, styles.rejectButton]}
+            activeOpacity={0.8}
+            onPress={() => console.log('驳回')}
+          >
+            <AntDesign name="closecircleo" size={24} color="#FF4D4F" />
+            <Text style={[styles.buttonControlText, { color: '#FF4D4F' }]}>
+              驳回
+            </Text>
+          </TouchableOpacity>
+
+          {/* 转交按钮 */}
+          <TouchableOpacity
+            style={[styles.button, styles.transferButton]}
+            activeOpacity={0.8}
+            onPress={() => console.log('转交')}
+          >
+            <AntDesign name="swap" size={24} color="#808080" />
+            <Text style={[styles.buttonControlText, { color: '#808080' }]}>
+              转交
+            </Text>
+          </TouchableOpacity>
+
+          {/* 通过按钮 */}
+          <TouchableOpacity
+            style={[styles.button, styles.approveButton]}
+            activeOpacity={0.8}
+            onPress={() => console.log('通过')}
+          >
+            <AntDesign name="checkcircleo" size={24} color="#1890FF" />
+            <Text style={[styles.buttonControlText, { color: '#1890FF' }]}>
+              通过
+            </Text>
+          </TouchableOpacity>
+          {/* 更多 */}
+          <TouchableOpacity
+            style={[styles.button, styles.approveButton]}
+            activeOpacity={0.8}
+            onPress={() => console.log('通过')}
+          >
+            <Feather name="more-horizontal" size={24} color="black" />
+            <Text style={[styles.buttonControlText, { color: 'black' }]}>
+              更多
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  //控制按钮
+  buttonContainer: {
+    backgroundColor: '#fff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e0e0e0',
+    paddingVertical: 8,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  button: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    flexDirection: 'column',
+    gap: 6, // RN 0.71+ 支持
+  },
+  rejectButton: {
+    //backgroundColor: 'rgba(255,77,79,0.1)',
+  },
+  transferButton: {
+    //backgroundColor: 'rgba(128,128,128,0.1)',
+  },
+  approveButton: {
+    //backgroundColor: 'rgba(24,144,255,0.1)',
+  },
+  moreButton: {
+    //backgroundColor: 'rgba(24,144,255,0.1)',
+  },
+  buttonControlText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  //控制按钮
+  closeButton: {
+    position: 'absolute',
+    top: 5,
+    right: 0,
+    zIndex: 9999,
+  },
   wrapper: {
     flex: 1,
     position: 'relative',

@@ -16,21 +16,14 @@ import {
   AvatarImage,
 } from '../ui/avatar';
 import { EditIcon } from '../ui/icon';
-const getProcessInstanceStateTitle = (value: any) => {
-  const states: Record<string, string> = {
-    Runnable: '运行中',
-    Suspended: '挂起',
-    Complete: '完成',
-    Terminated: '终止',
-  };
-  return states[value];
-};
+import { getProcessInstanceStateTitle } from '@/utils/workflow';
+
 const ProcessInstanceCard = React.memo(
   ({ item }: { item: ProcessInstance }) => {
     const route = useRouter();
     const navigateProcessDetails = (id: string) => {
       route.push({
-        pathname: '/processdetails',
+        pathname: '/approvaldetails',
         params: { wkInstanceId: id },
       });
     };

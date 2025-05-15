@@ -79,7 +79,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
     ? 'forder'
     : 'file';
   const indent = level * 12;
-
+  const hitSlop = { top: 20, bottom: 20, left: 20, right: 20 };
   // 处理展开动画
   const runAnimation = () => {
     Animated.timing(rotateAnim, {
@@ -113,6 +113,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
               runAnimation();
             }}
             style={styles.caretButton}
+            hitSlop={hitSlop}
           >
             <Animated.View
               style={{
@@ -126,7 +127,7 @@ const TreeItem: React.FC<TreeItemProps> = ({
                 ],
               }}
             >
-              <AntDesign name="right" size={14} color="#666" />
+              <AntDesign name="right" size={16} color="#666" />
             </Animated.View>
           </TouchableOpacity>
         )}
@@ -273,6 +274,7 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [images, setImages] = useState<IImageInfo[]>([]);
+
   const handleToggle = (id: string) => {
     setExpandedIds((prev) => {
       const next = new Set(prev);
