@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
-  ScrollView,
   TextInput,
   Alert,
   TouchableOpacity,
@@ -14,49 +13,133 @@ import {
   DrawerBackdrop,
   DrawerContent,
   DrawerHeader,
-  DrawerBody,
 } from '@/components/ui/drawer';
-import {
-  FormControl,
-  FormControlError,
-  FormControlErrorText,
-  FormControlErrorIcon,
-  FormControlLabel,
-  FormControlLabelText,
-  FormControlHelper,
-  FormControlHelperText,
-} from '@/components/ui/form-control';
 import { AntDesign } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Heading } from '../ui/heading';
-import { AlertCircleIcon, CloseIcon, Icon } from '../ui/icon';
+import { CloseIcon, Icon } from '../ui/icon';
 import { Pressable } from '../ui/pressable';
 import { Center } from '../ui/center';
-import { Input, InputField } from '../ui/input';
+import {
+  getWkDefinitionDetailsAsync,
+  StartActivityAsync,
+  verifyCataloguesAsync,
+} from '@/api/workflow/instance';
+import CondidateTreeList from './CandidateTreeList';
+import { WkActivityCreateDto } from '@/types/workflow/instance/processInstance.types';
+import { ProcessInstanceInfo } from './ApprovalDetail';
+import * as Yup from 'yup';
+import ValidationErrorModal from '../Common/ErrorTable';
 
 export default function ApprovalConfirm({
   visible,
   setVisible,
+  processInstanceInfo,
 }: {
   visible: boolean;
   setVisible: (visible: boolean) => void;
+  processInstanceInfo: ProcessInstanceInfo;
 }) {
   const navigation = useNavigation();
-  const [isInvalid, setIsInvalid] = useState(false);
-  const [inputValue, setInputValue] = useState('12345');
-  const [formData, setFormData] = useState({
-    comment: '',
-    notifyApplicant: true,
-    nextStep: 'finish',
-    attachments: [] as string[],
+  const [errors, setErrors] =
+    useState<Array<{ path?: string; message: string }>>();
+  const [visibleErrorModal, setVisibleErrorModal] = useState<boolean>(false);
+  const [formData, setFormData] = useState<WkActivityCreateDto>({
+    activityName: '',
+    workflowId: '',
+    data: {
+      DecideBranching: '',
+      Remark: '',
+      Candidates: '',
+      ExecutionType: 1,
+    },
   });
 
-  const handleSubmit = async () => {
-    if (!formData.comment.trim()) {
-      Alert.alert('提示', '请填写审批意见');
-      return;
-    }
+  const ValidationSchema = Yup.object().shape({
+    activityName: Yup.string().required('节点Id缺失'),
+    workflowId: Yup.string().required('流程Id缺失'),
+    data: Yup.object({
+      DecideBranching: Yup.string().required('下一节点名称缺失'),
+      Remark: Yup.string().required('请填写审核意见'),
+      Candidates: Yup.string().required('请选择接收人'),
+      ExecutionType: Yup.string().required('下一节点类型缺失'),
+    }),
+  });
+
+  async function validateAsync(
+    data: unknown,
+  ): Promise<{ data?: any; error?: any }> {
     try {
+      const validatedData = await ValidationSchema.validate(data, {
+        abortEarly: false,
+      });
+      console.log('验证通过:', validatedData);
+      return { data: validatedData };
+    } catch (err) {
+      console.error('验证错误:', err);
+      return { error: err };
+    }
+  }
+  useEffect(() => {
+    const fetchDefinitionInfo = async () => {
+      if (!processInstanceInfo) return;
+      const definitionD = await getWkDefinitionDetailsAsync({
+        id: processInstanceInfo.definitionId,
+        version: 1,
+      });
+      const currentNode = definitionD.data?.nodes.find(
+        (d) => d.name === processInstanceInfo.currentStepName,
+      );
+      console.log(currentNode);
+      if (currentNode) {
+        const nextStep = currentNode.nextNodes.find((n) => n.nodeType === 1);
+        if (nextStep)
+          setFormData((pre) => ({
+            activityName: processInstanceInfo.currentPointerId,
+            workflowId: processInstanceInfo.wkInstanceKey,
+            data: { ...pre.data, DecideBranching: nextStep.nextNodeName },
+          }));
+      }
+    };
+    fetchDefinitionInfo();
+  }, [processInstanceInfo]);
+  const verifyAttachment = async () => {
+    //验证附件是否上传
+    const catalogueResult = await verifyCataloguesAsync(
+      [{ reference: processInstanceInfo.reference, referenceType: 1 }],
+      { details: false },
+    );
+    if (catalogueResult && catalogueResult?.profileInfo.length > 0) {
+      let meg = '';
+      catalogueResult.profileInfo.forEach((ret) => {
+        meg += `${ret.message}`;
+      });
+      console.log(meg);
+      Alert.alert(`请上传必填附件！`);
+      return true;
+    }
+    return false;
+  };
+  const handleSubmit = async () => {
+    try {
+      if (await verifyAttachment()) return;
+      const { error } = await validateAsync(formData);
+      if (error) {
+        if (error instanceof Yup.ValidationError) {
+          if (error instanceof Yup.ValidationError) {
+            const m = error.inner.map((e) => ({
+              path: e.path,
+              message: e.message,
+            }));
+            setVisibleErrorModal(true);
+            setErrors(m);
+          }
+        } else {
+          Alert.alert('错误', '发生未知错误！');
+        }
+        return;
+      }
+      await StartActivityAsync(formData);
       // 调用审批API
       console.log('提交审批数据:', formData);
       navigation.goBack();
@@ -76,7 +159,10 @@ export default function ApprovalConfirm({
         anchor="bottom"
       >
         <DrawerBackdrop />
-        <DrawerContent className="p-0" style={{ backgroundColor: '#fff' }}>
+        <DrawerContent
+          className="p-0"
+          style={{ backgroundColor: '#fff', flex: 1 }}
+        >
           <DrawerHeader className="p-3">
             <Center className="w-full">
               <Heading size="md">审批</Heading>
@@ -91,120 +177,41 @@ export default function ApprovalConfirm({
               <Icon as={CloseIcon} size="md" color="#000" />
             </Pressable>
           </DrawerHeader>
-          <DrawerBody className="p-0" style={{ backgroundColor: '#fff' }}>
-            {/* 主要内容 */}
-            <ScrollView style={styles.content}>
-              {/* 审批意见卡片 */}
-              <View style={styles.card}>
-                <TextInput
-                  style={styles.commentInput}
-                  placeholder="请输入审批意见（必填）"
-                  multiline
-                  numberOfLines={4}
-                  value={formData.comment}
-                  onChangeText={(text) =>
-                    setFormData({ ...formData, comment: text })
-                  }
-                />
-              </View>
-              {/* 流程设置卡片 */}
-              <View style={styles.card}>
-                <FormControl
-                  isInvalid={isInvalid}
-                  size="md"
-                  isDisabled={false}
-                  isReadOnly={false}
-                  isRequired={false}
-                >
-                  <FormControlLabel>
-                    <FormControlLabelText>Password</FormControlLabelText>
-                  </FormControlLabel>
-                  <Input className="my-1" size="md">
-                    <InputField
-                      type="password"
-                      placeholder="password"
-                      value={inputValue}
-                      onChangeText={(text) => setInputValue(text)}
-                    />
-                  </Input>
-                  <FormControlHelper>
-                    <FormControlHelperText>
-                      Must be atleast 6 characters.
-                    </FormControlHelperText>
-                  </FormControlHelper>
-                  <FormControlError>
-                    <FormControlErrorIcon as={AlertCircleIcon} />
-                    <FormControlErrorText>
-                      Atleast 6 characters are required.
-                    </FormControlErrorText>
-                  </FormControlError>
-                </FormControl>
-                <Text style={styles.cardTitle}>流程设置</Text>
-                <TouchableOpacity
-                  style={styles.optionItem}
-                  onPress={() =>
-                    setFormData({ ...formData, nextStep: 'finish' })
-                  }
-                >
-                  <AntDesign
-                    name={
-                      formData.nextStep === 'finish'
-                        ? 'checkcircle'
-                        : 'checkcircleo'
-                    }
-                    size={20}
-                    color={formData.nextStep === 'finish' ? '#1890FF' : '#666'}
-                  />
-                  <Text style={styles.optionText}>结束流程</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.optionItem}
-                  onPress={() =>
-                    setFormData({ ...formData, nextStep: 'continue' })
-                  }
-                >
-                  <AntDesign
-                    name={
-                      formData.nextStep === 'continue'
-                        ? 'checkcircle'
-                        : 'checkcircleo'
-                    }
-                    size={20}
-                    color={
-                      formData.nextStep === 'continue' ? '#1890FF' : '#666'
-                    }
-                  />
-                  <Text style={styles.optionText}>转交下一步审批</Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          </DrawerBody>
+          {/* 主要内容 */}
+          <View style={styles.content}>
+            {/* 审批意见卡片 */}
+            <View style={styles.card}>
+              <TextInput
+                style={styles.commentInput}
+                placeholder="请输入审批意见（必填）"
+                multiline
+                numberOfLines={4}
+                value={formData.data.Remark}
+                onChangeText={(text) =>
+                  setFormData({
+                    ...formData,
+                    data: { ...formData.data, Remark: text },
+                  })
+                }
+              />
+            </View>
+            {/* 流程设置卡片 */}
+            <View style={{ ...styles.card, height: 342 }}>
+              <CondidateTreeList
+                wkInstanceKey={processInstanceInfo.wkInstanceKey}
+                onSlectKeys={(keys) => {
+                  if (keys.length > 0)
+                    setFormData({
+                      ...formData,
+                      data: { ...formData.data, Candidates: keys.join(',') },
+                    });
+                }}
+              />
+            </View>
+          </View>
           {/* 底部操作栏 */}
           <SafeAreaView style={{ backgroundColor: '#fff' }}>
             <View style={styles.footer}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingBottom: 12,
-                  paddingLeft: 8,
-                }}
-                onPress={() =>
-                  setFormData({
-                    ...formData,
-                    notifyApplicant: !formData.notifyApplicant,
-                  })
-                }
-              >
-                <AntDesign
-                  name={
-                    formData.notifyApplicant ? 'checkcircle' : 'checkcircleo'
-                  }
-                  size={20}
-                  color={formData.notifyApplicant ? '#1890FF' : '#666'}
-                />
-                <Text style={styles.optionText}>通知申请人</Text>
-              </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionButton, styles.submitButton]}
                 onPress={handleSubmit}
@@ -217,6 +224,15 @@ export default function ApprovalConfirm({
           </SafeAreaView>
         </DrawerContent>
       </Drawer>
+      {visibleErrorModal && errors && (
+        <ValidationErrorModal
+          errors={errors}
+          visible={visibleErrorModal}
+          onClose={() => {
+            setVisibleErrorModal(false);
+          }}
+        />
+      )}
     </>
   );
 }

@@ -207,3 +207,94 @@ export type AttachFile = {
   downloadTimes: number;
   sequenceNumber: number;
 };
+
+export type CatalogueVerifyDetailedInfo = {
+  isRequired: boolean;
+  reference: string;
+  name: string;
+  uploaded: boolean;
+  children?: CatalogueVerifyDetailedInfo[];
+};
+export type CatalogueVerifyProfileInfo = {
+  reference: string;
+  message: string[];
+};
+export type CatalogueVerifyResultDto = {
+  detailedInfo: CatalogueVerifyDetailedInfo[];
+  profileInfo: CatalogueVerifyProfileInfo[];
+};
+
+export type WkCandidateDto = {
+  candidateId: string;
+  userName: string;
+  displayUserName: string;
+  defaultSelection: boolean;
+};
+
+export type WkActivityCreateDto = {
+  activityName: string;
+  workflowId: string;
+  data: WkActivityDataDto;
+};
+export type WkActivityDataDto = {
+  DecideBranching: string;
+  Remark: string;
+  Candidates: string;
+  ExecutionType: WkNodeType;
+};
+
+export type WkConditionNode = {
+  nextNodeName: string;
+  nodeType: WkNodeType;
+};
+
+export type WorkflowDefinition = {
+  id: string;
+  version: number;
+  title: string;
+  limitTime?: number;
+  isEnabled: boolean;
+  description: string;
+  sortNumber: number;
+  groupId?: string;
+  businessType: string;
+  processType: string;
+  nodes: WorkflowNode[];
+  extraProperties?:
+    | { graph_nodes: any[]; graph_edges: any[]; graph_data: any }
+    | Record<string, any>;
+};
+
+/**
+ *@param {1 | 2 | 3} 1.开始;2.活动步骤节点;3.结束;
+ */
+export type StepNodeType = 1 | 2 | 3;
+export type WorkflowNode = {
+  id: string;
+  name: string;
+  displayName: string;
+  limitTime?: number;
+  wkStepBodyId: string;
+  stepNodeType: StepNodeType;
+  version: number;
+  nextNodes: WkConditionNode[];
+  wkCandidates: WkCandidateCreateDto[];
+  applicationForms: NodeAddApplicationFormDto[];
+  params: WkParam[];
+};
+
+export type WkCandidateCreateDto = {
+  candidateId: string;
+  userName: string;
+  displayUserName: string;
+  defaultSelection: boolean;
+  executorType: 1 | 2 | 3;
+};
+
+export type NodeAddApplicationFormDto = {
+  applicationFormId: string;
+  sequenceNumber: number;
+  title?: string;
+  applicationType: ApplicationType;
+  params: WkParam[];
+};

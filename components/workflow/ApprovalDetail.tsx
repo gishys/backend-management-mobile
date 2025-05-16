@@ -25,16 +25,22 @@ const approvalData = {
     },
   ],
 };
-
-interface ApprovalDetailsProps {
+export interface ProcessInstanceInfo {
+  wkInstanceKey: string;
+  currentPointerId: string;
+  currentStepName: string;
+  reference: string;
+  definitionId: string;
   processType?: string;
   state?: string;
+}
+interface ApprovalDetailsProps {
+  procesInstanceInfo?: ProcessInstanceInfo;
   sections: FormSection[];
 }
 
 export default function ApprovalDetail({
-  processType,
-  state,
+  procesInstanceInfo,
   sections,
 }: ApprovalDetailsProps) {
   const [approvalConfirmVisible, setApprovalConfirmVisible] =
@@ -43,15 +49,15 @@ export default function ApprovalDetail({
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
       <SafeAreaView style={styles.container}>
         <Header
-          title={processType}
-          status={getProcessInstanceStateTitle(state)}
+          title={procesInstanceInfo?.processType}
+          status={getProcessInstanceStateTitle(procesInstanceInfo?.state)}
         />
       </SafeAreaView>
       {/* 内容区域 */}
       <ScrollView style={styles.content}>
         {sections.map((section) => {
           return (
-            <Card title={section.title}>
+            <Card title={section.title} key={section.id}>
               {section.fields.map((field) => {
                 return (
                   <DetailItem
@@ -102,10 +108,13 @@ export default function ApprovalDetail({
           />
         </View>
       </SafeAreaView>
-      <ApprovalConfirm
-        setVisible={setApprovalConfirmVisible}
-        visible={approvalConfirmVisible}
-      />
+      {procesInstanceInfo && (
+        <ApprovalConfirm
+          setVisible={setApprovalConfirmVisible}
+          visible={approvalConfirmVisible}
+          processInstanceInfo={procesInstanceInfo}
+        />
+      )}
     </View>
   );
 }

@@ -2,7 +2,9 @@ import {
   fetchAttachmentByReferenceAsync,
   fetchMyWkInstance,
 } from '@/api/workflow/instance';
-import ApprovalDetail from '@/components/workflow/ApprovalDetail';
+import ApprovalDetail, {
+  ProcessInstanceInfo,
+} from '@/components/workflow/ApprovalDetail';
 import AttachmentViewer from '@/components/workflow/AttachmentViewer';
 import { FormSection } from '@/types/workflow/form/form.types';
 import {
@@ -16,10 +18,8 @@ export default function approvaldetails() {
   const params = useLocalSearchParams();
   const [formSections, setFormSections] = useState<FormSection[]>([]);
   const [attachments, setAttachments] = useState<AttachCatalogue[]>([]);
-  const [processBasicInfo, setProcessBasicInfo] = useState<{
-    processType: string;
-    state: string;
-  }>();
+  const [processBasicInfo, setProcessBasicInfo] =
+    useState<ProcessInstanceInfo>();
   useEffect(() => {
     (async () => {
       console.log(params);
@@ -32,6 +32,11 @@ export default function approvaldetails() {
         setProcessBasicInfo({
           processType: instance.processType,
           state: 'Runnable',
+          reference: instance.reference,
+          wkInstanceKey: instance.id,
+          definitionId: instance.definitionId,
+          currentPointerId: instance.currentExecutionPointer.id,
+          currentStepName: instance.currentExecutionPointer.stepName,
         });
         if (instance.currentExecutionPointer?.extensionAttributes?.form_data) {
           setFormSections(
@@ -50,8 +55,7 @@ export default function approvaldetails() {
   return (
     <>
       <ApprovalDetail
-        processType={processBasicInfo?.processType}
-        state={processBasicInfo?.state}
+        procesInstanceInfo={processBasicInfo}
         sections={formSections}
       />
       <AttachmentViewer attachments={attachments} />

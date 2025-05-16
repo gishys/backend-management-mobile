@@ -3,8 +3,12 @@ import { PagedResultDto, PaginationParams } from '@/types/page.types';
 import {
   AttachCatalogue,
   AttachCatalogueCreateDto,
+  CatalogueVerifyResultDto,
   ProcessInstance,
   WorkflowInstance,
+  WkCandidateDto,
+  WkActivityCreateDto,
+  WorkflowDefinition,
 } from '@/types/workflow/instance/processInstance.types';
 
 export const fetchMyWkInstances = async (
@@ -49,4 +53,44 @@ export async function fetchAttachmentByReferenceAsync(
     AttachCatalogue[] | { error?: { message?: string } }
   >(`/api/app/attachment/findbyreference`, data);
   return response.data;
+}
+
+/**验证必填文件夹已上传文件 */
+export async function verifyCataloguesAsync(
+  data: {
+    reference: string;
+    referenceType: number;
+  }[],
+  params: { details: boolean },
+) {
+  const response = await apiClient.post<CatalogueVerifyResultDto>(
+    `/api/app/attachment/verifycatalogues`,
+    data,
+    { params: params },
+  );
+  return response.data;
+}
+
+/**获取可办理人 */
+export async function getWkInstancePointerCandidateAsync(paras: {
+  workflowId: string;
+}) {
+  return await apiClient.get<WkCandidateDto[]>(
+    `/hxworkflow/workflow/candidate/${paras.workflowId}`,
+  );
+}
+
+/**提交业务流程 */
+export async function StartActivityAsync(data: WkActivityCreateDto) {
+  return await apiClient.post<null>('/hxworkflow/workflow/activity', data);
+}
+
+/**获取流程模板详情 */
+export async function getWkDefinitionDetailsAsync(paras: {
+  id: string;
+  version: number;
+}) {
+  return await apiClient.get<WorkflowDefinition>(`/hxdefinition/details`, {
+    params: paras,
+  });
 }

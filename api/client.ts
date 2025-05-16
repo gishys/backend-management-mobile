@@ -26,8 +26,15 @@ apiClient.interceptors.response.use(
     console.log(`请求耗时: ${duration}ms`);
     return response;
   },
-  (error: AxiosError<{ message?: string }>) => {
-    const errorMessage = error.response?.data?.message || error.message;
+  (
+    error:
+      | AxiosError<{ message?: string } | { error?: { message?: string } }>
+      | any,
+  ) => {
+    const errorMessage =
+      error.response?.data?.error?.message ||
+      error.response?.data?.message ||
+      error.message;
 
     // 统一错误提示
     Alert.alert('请求错误', errorMessage);
