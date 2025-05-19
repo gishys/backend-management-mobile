@@ -33,6 +33,7 @@ export interface ProcessInstanceInfo {
   definitionId: string;
   processType?: string;
   state?: string;
+  form_data?: FormSection[];
 }
 interface ApprovalDetailsProps {
   procesInstanceInfo?: ProcessInstanceInfo;
@@ -108,7 +109,7 @@ export default function ApprovalDetail({
           />
         </View>
       </SafeAreaView>
-      {procesInstanceInfo && (
+      {approvalConfirmVisible && procesInstanceInfo && (
         <ApprovalConfirm
           setVisible={setApprovalConfirmVisible}
           visible={approvalConfirmVisible}

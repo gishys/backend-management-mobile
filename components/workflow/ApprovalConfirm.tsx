@@ -23,6 +23,7 @@ import { Center } from '../ui/center';
 import {
   getWkDefinitionDetailsAsync,
   StartActivityAsync,
+  updateExecutionPointerAsync,
   verifyCataloguesAsync,
 } from '@/api/workflow/instance';
 import CondidateTreeList from './CandidateTreeList';
@@ -30,6 +31,7 @@ import { WkActivityCreateDto } from '@/types/workflow/instance/processInstance.t
 import { ProcessInstanceInfo } from './ApprovalDetail';
 import * as Yup from 'yup';
 import ValidationErrorModal from '../Common/ErrorTable';
+import { useToast, Toast, ToastDescription } from '@/components/ui/toast';
 
 export default function ApprovalConfirm({
   visible,
@@ -44,6 +46,8 @@ export default function ApprovalConfirm({
   const [errors, setErrors] =
     useState<Array<{ path?: string; message: string }>>();
   const [visibleErrorModal, setVisibleErrorModal] = useState<boolean>(false);
+  const [isInvalidAuditComments, setIsInvalidAuditComments] = useState(false);
+  const [isInvalidSelectReceiver, setIsInvalidSelectReceiver] = useState(false);
   const [formData, setFormData] = useState<WkActivityCreateDto>({
     activityName: '',
     workflowId: '',
@@ -54,14 +58,35 @@ export default function ApprovalConfirm({
       ExecutionType: 1,
     },
   });
-
+  const toast = useToast();
+  const [toastId, setToastId] = useState<string>('0');
+  const handleToast = (message: string) => {
+    if (!toast.isActive(toastId)) {
+      showNewToast(message);
+    }
+  };
+  const showNewToast = (message: string) => {
+    const newId = Math.random().toString();
+    setToastId(newId);
+    toast.show({
+      id: newId,
+      placement: 'top',
+      duration: 3000,
+      render: ({ id }) => {
+        const uniqueToastId = 'toast-' + id;
+        return (
+          <Toast nativeID={uniqueToastId} action="warning" variant="solid">
+            <ToastDescription>{message}</ToastDescription>
+          </Toast>
+        );
+      },
+    });
+  };
   const ValidationSchema = Yup.object().shape({
     activityName: Yup.string().required('节点Id缺失'),
     workflowId: Yup.string().required('流程Id缺失'),
     data: Yup.object({
       DecideBranching: Yup.string().required('下一节点名称缺失'),
-      Remark: Yup.string().required('请填写审核意见'),
-      Candidates: Yup.string().required('请选择接收人'),
       ExecutionType: Yup.string().required('下一节点类型缺失'),
     }),
   });
@@ -115,7 +140,7 @@ export default function ApprovalConfirm({
         meg += `${ret.message}`;
       });
       console.log(meg);
-      Alert.alert(`请上传必填附件！`);
+      handleToast(`请上传必填附件！`);
       return true;
     }
     return false;
@@ -135,9 +160,29 @@ export default function ApprovalConfirm({
             setErrors(m);
           }
         } else {
-          Alert.alert('错误', '发生未知错误！');
+          handleToast('发生未知错误！');
         }
         return;
+      }
+      if (!formData.data.Remark) {
+        console.log(1);
+        setIsInvalidAuditComments(true);
+        return;
+      } else {
+        setIsInvalidAuditComments(false);
+      }
+      if (!formData.data.Candidates) {
+        console.log(2);
+        setIsInvalidSelectReceiver(true);
+        return;
+      } else {
+        setIsInvalidSelectReceiver(false);
+      }
+      if (processInstanceInfo.form_data) {
+        await updateExecutionPointerAsync(
+          { executionPointerId: processInstanceInfo.currentPointerId },
+          { form_data: processInstanceInfo.form_data },
+        );
       }
       await StartActivityAsync(formData);
       // 调用审批API
@@ -194,9 +239,12 @@ export default function ApprovalConfirm({
                   })
                 }
               />
+              {isInvalidAuditComments && (
+                <Text style={styles.errorText}>{'审批意见不能为空'}</Text>
+              )}
             </View>
             {/* 流程设置卡片 */}
-            <View style={{ ...styles.card, height: 342 }}>
+            <View style={{ ...styles.card, height: 330 }}>
               <CondidateTreeList
                 wkInstanceKey={processInstanceInfo.wkInstanceKey}
                 onSlectKeys={(keys) => {
@@ -207,6 +255,9 @@ export default function ApprovalConfirm({
                     });
                 }}
               />
+              {isInvalidSelectReceiver && (
+                <Text style={styles.errorText}>{'请选择接收人'}</Text>
+              )}
             </View>
           </View>
           {/* 底部操作栏 */}
@@ -321,5 +372,10 @@ const styles = StyleSheet.create({
     top: 15,
     right: 15,
     zIndex: 9999,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    marginLeft: 8,
   },
 });

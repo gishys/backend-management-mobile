@@ -15,6 +15,7 @@
   "dependencies": {
     "@expo/html-elements": "^0.4.2",
     "@expo/vector-icons": "^14.1.0",
+    "@gluestack-ui/alert": "^0.1.16",
     "@gluestack-ui/avatar": "^0.1.18",
     "@gluestack-ui/form-control": "^0.1.19",
     "@gluestack-ui/icon": "^0.1.27",
@@ -23,6 +24,7 @@
     "@gluestack-ui/nativewind-utils": "^1.0.26",
     "@gluestack-ui/overlay": "^0.1.22",
     "@gluestack-ui/pressable": "^0.1.23",
+    "@gluestack-ui/textarea": "^0.1.25",
     "@gluestack-ui/toast": "^1.0.9",
     "@legendapp/motion": "^2.4.0",
     "@react-native-async-storage/async-storage": "^2.1.2",

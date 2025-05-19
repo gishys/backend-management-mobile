@@ -94,3 +94,23 @@ export async function getWkDefinitionDetailsAsync(paras: {
     params: paras,
   });
 }
+
+/**更新是否创建材料 */
+export async function InitMaterialsAsync(data: { executionPointerId: string }) {
+  return await apiClient.put<null, { error?: { message?: string } }>(
+    '/hxworkflow/workflow/mywkinstance/materials',
+    data,
+  );
+}
+
+/**更新节点扩展字段 */
+export async function updateExecutionPointerAsync(
+  params: { executionPointerId: string },
+  data: Record<string, any>,
+) {
+  return await apiClient.put<null, { error?: { message?: string } }>(
+    `/hxworkflow/workflow/data`,
+    data,
+    { params: params },
+  );
+}

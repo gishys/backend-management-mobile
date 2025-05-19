@@ -1,6 +1,8 @@
 import {
+  createManyCatalogueAsync,
   fetchAttachmentByReferenceAsync,
   fetchMyWkInstance,
+  InitMaterialsAsync,
 } from '@/api/workflow/instance';
 import ApprovalDetail, {
   ProcessInstanceInfo,
@@ -37,17 +39,28 @@ export default function approvaldetails() {
           definitionId: instance.definitionId,
           currentPointerId: instance.currentExecutionPointer.id,
           currentStepName: instance.currentExecutionPointer.stepName,
+          form_data:
+            instance.currentExecutionPointer.extensionAttributes?.form_data,
         });
+        const attachs = await fetchAttachmentByReferenceAsync([
+          { referenceType: 1, reference: instance.reference },
+        ]);
+        if (attachs as AttachCatalogue[]) {
+          setAttachments(attachs as AttachCatalogue[]);
+        }
         if (instance.currentExecutionPointer?.extensionAttributes?.form_data) {
           setFormSections(
             instance.currentExecutionPointer.extensionAttributes.form_data,
           );
-          const attachs = await fetchAttachmentByReferenceAsync([
-            { referenceType: 1, reference: instance.reference },
-          ]);
-          if (attachs as AttachCatalogue[]) {
-            setAttachments(attachs as AttachCatalogue[]);
-          }
+        }
+        if (!instance.currentExecutionPointer.isInitMaterials) {
+          await createManyCatalogueAsync(
+            5,
+            instance.currentExecutionPointer.materials,
+          );
+          await InitMaterialsAsync({
+            executionPointerId: instance.currentExecutionPointer.id,
+          });
         }
       }
     })();

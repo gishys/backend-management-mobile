@@ -49,7 +49,9 @@ const ProcessInstanceCard = React.memo(
             </Text>
           </HStack>
           <Text className="text-sm font-normal mb-1 text-typography-700">
-            当前环节：{item.processingStepName}
+            {item.state === 'Complete'
+              ? ''
+              : `当前环节：${item.processingStepName}`}
           </Text>
           <Text className="text-sm font-normal mb-1 text-typography-700">
             业务号：{item.reference}
@@ -74,9 +76,15 @@ const ProcessInstanceCard = React.memo(
                 {item.recipient}
               </Text>
             </HStack>
-            <Badge size="md" variant="solid" action="info">
+            <Badge
+              size="md"
+              variant="solid"
+              action={item.state !== 'Complete' ? 'info' : 'success'}
+            >
               <BadgeText>{getProcessInstanceStateTitle(item.state)}</BadgeText>
-              <BadgeIcon as={EditIcon} className="ml-2" />
+              {item.state !== 'Complete' && (
+                <BadgeIcon as={EditIcon} className="ml-2" />
+              )}
             </Badge>
           </HStack>
         </Card>
