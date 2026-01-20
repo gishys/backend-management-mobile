@@ -1,10 +1,25 @@
 // src/api/client.ts
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// 根据平台和环境设置 baseURL
+// Web 平台在开发环境使用代理路径，避免 CORS 问题
+const getBaseURL = () => {
+  const API_BASE_URL = 'http://192.168.2.13:44359';
+  
+  if (Platform.OS === 'web' && __DEV__) {
+    // Web 平台开发环境：使用代理服务器
+    // 代理服务器运行在 http://localhost:3001，将 /api 请求转发到后端
+    return 'http://localhost:3001/api';
+  }
+  // 原生平台（iOS/Android）或生产环境：直接使用完整 URL
+  // 原生平台不受浏览器 CORS 限制
+  return API_BASE_URL;
+};
+
 const apiClient = axios.create({
-  baseURL: 'http://192.168.110.191:44359',
+  baseURL: getBaseURL(),
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });

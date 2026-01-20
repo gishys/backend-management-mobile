@@ -18,23 +18,29 @@ import {
 } from '@/types/workflow/instance/processInstance.types';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react';
+import RejectConfirm from '@/components/workflow/RejectConfirm';
+import { ProcessInstanceInfo } from '@/components/workflow/ApprovalDetail';
 import {
   Animated,
   Button,
-  SafeAreaView,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heading } from '@/components/ui/heading';
 import { AntDesign, Feather } from '@expo/vector-icons';
+import { createShadowStyle } from '@/utils/shadowStyles';
 
 export default function ProcessDetails() {
   const params = useLocalSearchParams();
   const navigation = useNavigation();
   const [formSections, setFormSections] = useState<FormSection[]>([]);
   const [attachments, setAttachments] = useState<AttachCatalogue[]>([]);
+  const [processInstanceInfo, setProcessInstanceInfo] = useState<ProcessInstanceInfo | null>(null);
+  const [rejectConfirmVisible, setRejectConfirmVisible] = useState(false);
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const drawerAnim = useState(new Animated.Value(0))[0];
@@ -79,6 +85,22 @@ export default function ProcessDetails() {
       });
       if (wkInstance as WorkflowInstance) {
         const instance = wkInstance as WorkflowInstance;
+        
+        // 设置流程实例信息
+        if (instance.currentExecutionPointer) {
+          setProcessInstanceInfo({
+            wkInstanceKey: instance.id,
+            currentPointerId: instance.currentExecutionPointer.id,
+            currentStepName: instance.currentExecutionPointer.stepName,
+            reference: instance.reference,
+            definitionId: instance.definitionId,
+            version: 1, // 默认版本，实际应该从实例中获取
+            processType: instance.processType,
+            state: instance.currentExecutionPointer.status?.toString(),
+            form_data: instance.currentExecutionPointer.extensionAttributes?.form_data,
+          });
+        }
+        
         if (instance.currentExecutionPointer?.extensionAttributes?.form_data) {
           setFormSections(
             instance.currentExecutionPointer.extensionAttributes.form_data,
@@ -132,7 +154,7 @@ export default function ProcessDetails() {
               activeOpacity={0.7}
               hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             >
-              <AntDesign name="closecircle" size={20} color="#000" />
+              <AntDesign name="close-circle" size={20} color="#000" />
             </TouchableOpacity>
           </DrawerHeader>
           <DrawerBody>
@@ -146,9 +168,15 @@ export default function ProcessDetails() {
           <TouchableOpacity
             style={[styles.button, styles.rejectButton]}
             activeOpacity={0.8}
-            onPress={() => console.log('驳回')}
+            onPress={() => {
+              if (processInstanceInfo) {
+                setRejectConfirmVisible(true);
+              } else {
+                console.warn('流程实例信息未加载完成');
+              }
+            }}
           >
-            <AntDesign name="closecircleo" size={24} color="#FF4D4F" />
+            <AntDesign name="close-circle" size={24} color="#FF4D4F" />
             <Text style={[styles.buttonControlText, { color: '#FF4D4F' }]}>
               驳回
             </Text>
@@ -172,7 +200,7 @@ export default function ProcessDetails() {
             activeOpacity={0.8}
             onPress={() => console.log('通过')}
           >
-            <AntDesign name="checkcircleo" size={24} color="#1890FF" />
+            <AntDesign name="check-circle" size={24} color="#1890FF" />
             <Text style={[styles.buttonControlText, { color: '#1890FF' }]}>
               通过
             </Text>
@@ -190,6 +218,14 @@ export default function ProcessDetails() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      {/* 驳回确认对话框 */}
+      {rejectConfirmVisible && processInstanceInfo && (
+        <RejectConfirm
+          visible={rejectConfirmVisible}
+          setVisible={setRejectConfirmVisible}
+          processInstanceInfo={processInstanceInfo}
+        />
+      )}
     </>
   );
 }
@@ -251,11 +287,13 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 4,
     paddingVertical: 6,
     paddingHorizontal: 3,
-    elevation: 3,
-    shadowColor: 'rgba(24, 144, 255, 0.3)',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 1,
-    shadowRadius: 12,
+    ...createShadowStyle(
+      'rgba(24, 144, 255, 0.3)',
+      { width: 0, height: 4 },
+      1,
+      12,
+      3
+    ),
   },
   buttonContent: {
     flexDirection: 'column',

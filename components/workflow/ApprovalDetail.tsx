@@ -2,16 +2,17 @@ import {
   View,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Text,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import React, { useState } from 'react';
 import { getProcessInstanceStateTitle } from '@/utils/workflow';
 import { FormSection } from '@/types/workflow/form/form.types';
 import ApprovalConfirm from './ApprovalConfirm';
+import RejectConfirm from './RejectConfirm';
 
 // 模拟审批数据
 const approvalData = {
@@ -31,6 +32,7 @@ export interface ProcessInstanceInfo {
   currentStepName: string;
   reference: string;
   definitionId: string;
+  version: number;
   processType?: string;
   state?: string;
   form_data?: FormSection[];
@@ -45,6 +47,8 @@ export default function ApprovalDetail({
   sections,
 }: ApprovalDetailsProps) {
   const [approvalConfirmVisible, setApprovalConfirmVisible] =
+    useState<boolean>(false);
+  const [rejectConfirmVisible, setRejectConfirmVisible] =
     useState<boolean>(false);
   return (
     <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
@@ -88,7 +92,7 @@ export default function ApprovalDetail({
         {/* 底部操作栏 */}
         <View style={styles.footer}>
           <ActionButton
-            icon="checkcircleo"
+            icon="check-circle"
             label="通过"
             color="#1890FF"
             onPress={() => {
@@ -96,10 +100,16 @@ export default function ApprovalDetail({
             }}
           />
           <ActionButton
-            icon="closecircleo"
+            icon="close-circle"
             label="驳回"
             color="#FF4D4F"
-            onPress={() => console.log('驳回')}
+            onPress={() => {
+              if (procesInstanceInfo) {
+                setRejectConfirmVisible(true);
+              } else {
+                console.warn('流程实例信息未加载完成');
+              }
+            }}
           />
           <ActionButton
             icon="swap"
@@ -113,6 +123,13 @@ export default function ApprovalDetail({
         <ApprovalConfirm
           setVisible={setApprovalConfirmVisible}
           visible={approvalConfirmVisible}
+          processInstanceInfo={procesInstanceInfo}
+        />
+      )}
+      {rejectConfirmVisible && procesInstanceInfo && (
+        <RejectConfirm
+          setVisible={setRejectConfirmVisible}
+          visible={rejectConfirmVisible}
           processInstanceInfo={procesInstanceInfo}
         />
       )}

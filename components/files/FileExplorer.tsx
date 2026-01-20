@@ -312,7 +312,7 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({
             activeOpacity={0.7}
             hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
           >
-            <AntDesign name="closecircle" size={28} color="#FFF" />
+            <AntDesign name="close-circle" size={28} color="#FFF" />
           </TouchableOpacity>
 
           {/* 图片查看器容器 */}

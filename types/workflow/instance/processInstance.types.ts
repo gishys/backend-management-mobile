@@ -18,6 +18,7 @@ export type ProcessInstance = {
 
 export type WorkflowInstance = {
   id: string;
+  version: number;
   definitionId: string;
   reference: string;
   registrationCategory: string;

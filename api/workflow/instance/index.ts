@@ -90,7 +90,7 @@ export async function getWkDefinitionDetailsAsync(paras: {
   id: string;
   version: number;
 }) {
-  return await apiClient.get<WorkflowDefinition>(`/hxdefinition/details`, {
+  return await apiClient.get<WorkflowDefinition>(`/hxworkflow/hxdefinition/details`, {
     params: paras,
   });
 }

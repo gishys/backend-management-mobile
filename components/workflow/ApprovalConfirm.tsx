@@ -108,22 +108,35 @@ export default function ApprovalConfirm({
   useEffect(() => {
     const fetchDefinitionInfo = async () => {
       if (!processInstanceInfo) return;
-      const definitionD = await getWkDefinitionDetailsAsync({
-        id: processInstanceInfo.definitionId,
-        version: 1,
-      });
-      const currentNode = definitionD.data?.nodes.find(
-        (d) => d.name === processInstanceInfo.currentStepName,
-      );
-      console.log(currentNode);
-      if (currentNode) {
-        const nextStep = currentNode.nextNodes.find((n) => n.nodeType === 1);
-        if (nextStep)
-          setFormData((pre) => ({
-            activityName: processInstanceInfo.currentPointerId,
-            workflowId: processInstanceInfo.wkInstanceKey,
-            data: { ...pre.data, DecideBranching: nextStep.nextNodeName },
-          }));
+      try {
+        const definitionD = await getWkDefinitionDetailsAsync({
+          id: processInstanceInfo.definitionId,
+          version: processInstanceInfo.version,
+        });
+        
+        // 安全检查：确保 data 和 nodes 存在
+        const definition = definitionD.data || definitionD;
+        if (!definition || !definition.nodes || !Array.isArray(definition.nodes)) {
+          console.warn('流程定义数据格式不正确或 nodes 不存在');
+          return;
+        }
+        
+        const currentNode = definition.nodes.find(
+          (d) => d.name === processInstanceInfo.currentStepName,
+        );
+        console.log(currentNode);
+        
+        if (currentNode && currentNode.nextNodes && Array.isArray(currentNode.nextNodes)) {
+          const nextStep = currentNode.nextNodes.find((n) => n.nodeType === 1);
+          if (nextStep)
+            setFormData((pre) => ({
+              activityName: processInstanceInfo.currentPointerId,
+              workflowId: processInstanceInfo.wkInstanceKey,
+              data: { ...pre.data, DecideBranching: nextStep.nextNodeName },
+            }));
+        }
+      } catch (error) {
+        console.error('获取流程定义信息失败:', error);
       }
     };
     fetchDefinitionInfo();
@@ -268,7 +281,7 @@ export default function ApprovalConfirm({
                 onPress={handleSubmit}
                 activeOpacity={0.8}
               >
-                <AntDesign name="checkcircle" size={20} color="#fff" />
+                <AntDesign name="check-circle" size={20} color="#fff" />
                 <Text style={styles.actionText}>确认通过</Text>
               </TouchableOpacity>
             </View>

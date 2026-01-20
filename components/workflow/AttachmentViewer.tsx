@@ -77,7 +77,7 @@ export default function AttachmentViewer({
               activeOpacity={0.7}
               hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
             >
-              <AntDesign name="closecircle" size={20} color="#000" />
+              <AntDesign name="close-circle" size={20} color="#000" />
             </TouchableOpacity>
           </DrawerHeader>
           <DrawerBody>

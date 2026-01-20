@@ -1,75 +1,194 @@
-import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
-import { Image } from 'expo-image';
+import React, { useMemo, useCallback } from 'react';
+import { Tabs, Link } from 'expo-router';
+import { Platform, Pressable } from 'react-native';
+import { AntDesign, MaterialIcons, FontAwesome } from '@expo/vector-icons';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+/**
+ * 标签页配置类型
+ */
+type TabConfig = {
+  name: string;
+  title: string;
+  icon: {
+    family: 'AntDesign' | 'MaterialIcons' | 'FontAwesome';
+    name: string;
+  };
+  headerRight?: (props: {
+    tintColor?: string;
+    pressColor?: string;
+    pressOpacity?: number;
+    canGoBack: boolean;
+  }) => React.ReactNode;
+  headerShown?: boolean;
+};
+
+/**
+ * 标签页配置数组
+ */
+const TAB_CONFIGS: TabConfig[] = [
+  {
+    name: 'approve',
+    title: '在线审批',
+    icon: {
+      family: 'MaterialIcons',
+      name: 'approval',
+    },
+    headerShown: true,
+  },
+  {
+    name: 'applicationCenter',
+    title: '应用中心',
+    icon: {
+      family: 'AntDesign',
+      name: 'appstore',
+    },
+    headerShown: true,
+  },
+  {
+    name: 'mine',
+    title: '我的',
+    icon: {
+      family: 'FontAwesome',
+      name: 'user',
+    },
+    headerShown: true,
+  },
+];
+
+/**
+ * 根据图标族返回对应的图标组件
+ */
+const getIconComponent = (
+  family: TabConfig['icon']['family'],
+  name: string,
+  color: string,
+  size: number = 24,
+) => {
+  const iconProps = { name: name as any, size, color };
+  switch (family) {
+    case 'AntDesign':
+      return <AntDesign {...iconProps} />;
+    case 'MaterialIcons':
+      return <MaterialIcons {...iconProps} />;
+    case 'FontAwesome':
+      return <FontAwesome {...iconProps} />;
+    default:
+      return null;
+  }
+};
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const colors = Colors[colorScheme ?? 'light'];
 
-  return (
-    <Tabs
-      screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        //headerShown: useClientOnlyValue(false, true),
-        headerShown: true,
-      }}
-    >
-      <Tabs.Screen
-        name="approve"
-        options={{
-          title: '在线审批',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="approval" size={25} color={color} />
-          ),
-          headerRight: () => (
-            <Link href="/approvaldetails" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="applicationCenter"
-        options={{
-          title: '应用中心',
-          tabBarIcon: ({ color }) => (
-            <AntDesign name="appstore-o" size={25} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="mine"
-        options={{
-          title: '我的',
-          tabBarIcon: ({ color }) => (
-            <FontAwesome name="user" size={25} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+  // 在线审批页面的 headerRight - 使用 useCallback 避免重新创建
+  const ApproveHeaderRight = useCallback(
+    (props: {
+      tintColor?: string;
+      pressColor?: string;
+      pressOpacity?: number;
+      canGoBack: boolean;
+    }) => (
+      <Link href="/approvaldetails" asChild>
+        <Pressable>
+          {({ pressed }) => (
+            <FontAwesome
+              name="info-circle"
+              size={25}
+              color={props.tintColor || colors.text}
+              style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
+            />
+          )}
+        </Pressable>
+      </Link>
+    ),
+    [colors.text],
   );
+
+  // 使用 useMemo 缓存 screenOptions，避免每次渲染都重新创建
+  const screenOptions = useMemo(
+    () => ({
+      // Tab Bar 样式
+      tabBarActiveTintColor: colors.tint,
+      tabBarInactiveTintColor: colors.tabIconDefault,
+      tabBarStyle: {
+        backgroundColor: colors.background,
+        borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
+        borderTopColor: colorScheme === 'dark' ? '#333' : '#e0e0e0',
+        height: Platform.OS === 'ios' ? 88 : 60,
+        paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+        paddingTop: 8,
+        elevation: 8, // Android shadow
+        shadowColor: '#000', // iOS shadow
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      tabBarLabelStyle: {
+        fontSize: 12,
+        fontWeight: '500' as const,
+        marginTop: 4,
+      },
+      tabBarIconStyle: {
+        marginTop: 4,
+      },
+      // Header 样式
+      headerShown: true,
+      headerStyle: {
+        backgroundColor: colors.background,
+        elevation: 0, // Android
+        shadowOpacity: 0, // iOS
+        borderBottomWidth: 1,
+        borderBottomColor: colorScheme === 'dark' ? '#333' : '#e0e0e0',
+      },
+      headerTintColor: colors.text,
+      headerTitleStyle: {
+        fontSize: 18,
+        fontWeight: '600' as const,
+      },
+      headerShadowVisible: false,
+      // 可访问性
+      tabBarAccessibilityLabel: '标签栏',
+      tabBarItemStyle: {
+        paddingVertical: 4,
+      },
+    }),
+    [colors, colorScheme],
+  );
+
+  // 使用 useMemo 缓存标签页配置，避免每次渲染都重新创建
+  const tabScreens = useMemo(
+    () =>
+      TAB_CONFIGS.map((tab) => {
+        // 为特定页面添加 headerRight
+        const headerRight = tab.name === 'approve' ? ApproveHeaderRight : tab.headerRight;
+
+        return (
+          <Tabs.Screen
+            key={tab.name}
+            name={tab.name}
+            options={{
+              title: tab.title,
+              headerShown: tab.headerShown ?? true,
+              tabBarIcon: ({ color, focused }) =>
+                getIconComponent(
+                  tab.icon.family,
+                  tab.icon.name,
+                  focused ? colors.tint : colors.tabIconDefault,
+                  24,
+                ),
+              tabBarLabel: tab.title,
+              tabBarAccessibilityLabel: `${tab.title}标签`,
+              headerRight,
+            }}
+          />
+        );
+      }),
+    [colors.tint, colors.tabIconDefault, ApproveHeaderRight],
+  );
+
+  return <Tabs screenOptions={screenOptions}>{tabScreens}</Tabs>;
 }

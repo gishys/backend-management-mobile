@@ -44,7 +44,7 @@ const ProcessInstanceDetailsTabs: React.FC = () => {
         options={{
           title: '应用中心',
           tabBarIcon: ({ color }) => (
-            <AntDesign name="appstore-o" size={25} color={color} />
+            <AntDesign name="appstore" size={25} color={color} />
           ),
         }}
       />
