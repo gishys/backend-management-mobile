@@ -21,6 +21,7 @@ import { useEffect, useState } from 'react';
 import RejectConfirm from '@/components/workflow/RejectConfirm';
 import { ProcessInstanceInfo } from '@/components/workflow/ApprovalDetail';
 import {
+  ActivityIndicator,
   Animated,
   Button,
   Platform,
@@ -31,8 +32,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Heading } from '@/components/ui/heading';
-import { AntDesign, Feather } from '@expo/vector-icons';
+import { AntDesign, Feather, MaterialIcons } from '@expo/vector-icons';
 import { createShadowStyle } from '@/utils/shadowStyles';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function ProcessDetails() {
   const params = useLocalSearchParams();
@@ -41,6 +43,9 @@ export default function ProcessDetails() {
   const [attachments, setAttachments] = useState<AttachCatalogue[]>([]);
   const [processInstanceInfo, setProcessInstanceInfo] = useState<ProcessInstanceInfo | null>(null);
   const [rejectConfirmVisible, setRejectConfirmVisible] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadTrigger, setReloadTrigger] = useState(0);
 
   const [drawerVisible, setDrawerVisible] = useState(false);
   const drawerAnim = useState(new Animated.Value(0))[0];
@@ -79,60 +84,161 @@ export default function ProcessDetails() {
   }, [navigation]);
   useEffect(() => {
     (async () => {
-      console.log(params);
-      const wkInstance = await fetchMyWkInstance({
-        workflowId: params.wkInstanceId.toString(),
-      });
-      if (wkInstance as WorkflowInstance) {
-        const instance = wkInstance as WorkflowInstance;
+      try {
+        setLoading(true);
+        setError(null);
+        console.log(params);
         
-        // 设置流程实例信息
-        if (instance.currentExecutionPointer) {
-          setProcessInstanceInfo({
-            wkInstanceKey: instance.id,
-            currentPointerId: instance.currentExecutionPointer.id,
-            currentStepName: instance.currentExecutionPointer.stepName,
-            reference: instance.reference,
-            definitionId: instance.definitionId,
-            version: 1, // 默认版本，实际应该从实例中获取
-            processType: instance.processType,
-            state: instance.currentExecutionPointer.status?.toString(),
-            form_data: instance.currentExecutionPointer.extensionAttributes?.form_data,
-          });
+        if (!params.wkInstanceId) {
+          setError('缺少流程实例ID');
+          setLoading(false);
+          return;
         }
+
+        const wkInstance = await fetchMyWkInstance({
+          workflowId: params.wkInstanceId.toString(),
+        });
         
-        if (instance.currentExecutionPointer?.extensionAttributes?.form_data) {
-          setFormSections(
-            instance.currentExecutionPointer.extensionAttributes.form_data,
-          );
-          const attachs = await fetchAttachmentByReferenceAsync([
-            { referenceType: 1, reference: instance.reference },
-          ]);
-          if (attachs as AttachCatalogue[]) {
-            setAttachments(attachs as AttachCatalogue[]);
+        if (wkInstance as WorkflowInstance) {
+          const instance = wkInstance as WorkflowInstance;
+          
+          // 设置流程实例信息
+          if (instance.currentExecutionPointer) {
+            setProcessInstanceInfo({
+              wkInstanceKey: instance.id,
+              currentPointerId: instance.currentExecutionPointer.id,
+              currentStepName: instance.currentExecutionPointer.stepName,
+              reference: instance.reference,
+              definitionId: instance.definitionId,
+              version: 1, // 默认版本，实际应该从实例中获取
+              processType: instance.processType,
+              state: instance.currentExecutionPointer.status?.toString(),
+              form_data: instance.currentExecutionPointer.extensionAttributes?.form_data,
+            });
           }
+          
+          if (instance.currentExecutionPointer?.extensionAttributes?.form_data) {
+            setFormSections(
+              instance.currentExecutionPointer.extensionAttributes.form_data,
+            );
+            const attachs = await fetchAttachmentByReferenceAsync([
+              { referenceType: 1, reference: instance.reference },
+            ]);
+            if (attachs as AttachCatalogue[]) {
+              setAttachments(attachs as AttachCatalogue[]);
+            }
+          } else {
+            // 没有表单数据
+            setFormSections([]);
+          }
+        } else {
+          setError('无法获取流程实例信息');
         }
+      } catch (err: any) {
+        console.error('加载流程详情失败:', err);
+        setError(
+          err?.response?.data?.message ||
+          err?.message ||
+          '加载流程详情失败，请稍后重试'
+        );
+      } finally {
+        setLoading(false);
       }
     })();
-  }, []);
+  }, [params.wkInstanceId, reloadTrigger]);
+  // 渲染内容
+  const renderContent = () => {
+    // 加载中状态
+    if (loading) {
+      return (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#1890FF" />
+          <Text style={styles.loadingText}>加载中...</Text>
+        </View>
+      );
+    }
+
+    // 错误状态
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <LinearGradient
+            colors={['#fff1f0', '#fff5f5']}
+            style={styles.emptyIconContainer}
+          >
+            <MaterialIcons 
+              name="error-outline" 
+              size={64} 
+              color="#ff4d4f" 
+            />
+          </LinearGradient>
+          <Text style={styles.emptyTitle}>加载失败</Text>
+          <Text style={styles.emptySubText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => {
+              // 重新加载
+              setError(null);
+              setReloadTrigger(prev => prev + 1);
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.retryButtonText}>重试</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // 无数据状态
+    if (!formSections || formSections.length === 0) {
+      return (
+        <View style={styles.emptyContainer}>
+          <LinearGradient
+            colors={['#e6f7ff', '#f0f9ff']}
+            style={styles.emptyIconContainer}
+          >
+            <MaterialIcons 
+              name="description" 
+              size={64} 
+              color="#1890ff" 
+            />
+          </LinearGradient>
+          <Text style={styles.emptyTitle}>暂无表单数据</Text>
+          <Text style={styles.emptySubText}>
+            该流程实例暂无表单信息
+          </Text>
+        </View>
+      );
+    }
+
+    // 正常显示表单
+    return (
+      <>
+        <FormViewer sections={formSections} />
+        {attachments && attachments.length > 0 && (
+          <TouchableOpacity
+            style={styles.verticalButton}
+            activeOpacity={0.8}
+            onPress={() => {
+              toggleDrawer();
+            }}
+          >
+            <View style={styles.buttonContent}>
+              <Text style={styles.buttonText}>查</Text>
+              <Text style={styles.buttonText}>看</Text>
+              <Text style={styles.buttonText}>附</Text>
+              <Text style={styles.buttonText}>件</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+      </>
+    );
+  };
+
   return (
     <>
       <View style={styles.wrapper}>
-        <FormViewer sections={formSections} />
-        <TouchableOpacity
-          style={styles.verticalButton}
-          activeOpacity={0.8}
-          onPress={() => {
-            toggleDrawer();
-          }}
-        >
-          <View style={styles.buttonContent}>
-            <Text style={styles.buttonText}>查</Text>
-            <Text style={styles.buttonText}>看</Text>
-            <Text style={styles.buttonText}>附</Text>
-            <Text style={styles.buttonText}>件</Text>
-          </View>
-        </TouchableOpacity>
+        {renderContent()}
       </View>
       <Drawer
         isOpen={drawerVisible}
@@ -342,5 +448,71 @@ const styles = StyleSheet.create({
   itemText: {
     fontSize: 15,
     color: '#1f1f1f',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f7fa',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: '#666666',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#f5f7fa',
+  },
+  emptyIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    ...createShadowStyle(
+      '#1890ff',
+      { width: 0, height: 4 },
+      0.15,
+      12,
+      Platform.OS === 'android' ? 4 : undefined
+    ),
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubText: {
+    fontSize: 14,
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 280,
+  },
+  retryButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: '#1890ff',
+    borderRadius: 8,
+    ...createShadowStyle(
+      '#1890ff',
+      { width: 0, height: 2 },
+      0.2,
+      4,
+      Platform.OS === 'android' ? 2 : undefined
+    ),
+  },
+  retryButtonText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

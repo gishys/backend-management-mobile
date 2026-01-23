@@ -13,6 +13,7 @@ import { getProcessInstanceStateTitle } from '@/utils/workflow';
 import { FormSection } from '@/types/workflow/form/form.types';
 import ApprovalConfirm from './ApprovalConfirm';
 import RejectConfirm from './RejectConfirm';
+import ReadOnlyForm from '@/components/form/ReadOnlyForm';
 
 // 模拟审批数据
 const approvalData = {
@@ -60,22 +61,7 @@ export default function ApprovalDetail({
       </SafeAreaView>
       {/* 内容区域 */}
       <ScrollView style={styles.content}>
-        {sections.map((section) => {
-          return (
-            <Card title={section.title} key={section.id}>
-              {section.fields.map((field) => {
-                return (
-                  <DetailItem
-                    icon="info"
-                    title={field.label}
-                    key={field.id}
-                    value={field.value}
-                  />
-                );
-              })}
-            </Card>
-          );
-        })}
+        <ReadOnlyForm sections={sections} />
         {/* 审批流程时间轴 */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>审批流程</Text>
