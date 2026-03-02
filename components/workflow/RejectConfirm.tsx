@@ -9,19 +9,10 @@ import {
   SafeAreaView,
   ScrollView,
 } from 'react-native';
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerContent,
-  DrawerHeader,
-  DrawerBody,
-} from '@/components/ui/drawer';
+import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { AntDesign } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Heading } from '../ui/heading';
-import { CloseIcon, Icon } from '../ui/icon';
-import { Pressable } from '../ui/pressable';
-import { Center } from '../ui/center';
 import {
   getWkDefinitionDetailsAsync,
   StartActivityAsync,
@@ -135,21 +126,17 @@ export default function RejectConfirm({
         console.log('当前节点:', currentNode);
 
         if (currentNode) {
-          // 查找所有前序节点（nodeType === 2 表示回退）
-          const prevNodes = definition.nodes
-            .filter((node) => {
-              // 查找指向当前节点的节点（即前序节点）
-              return (
-                node.nextNodes &&
-                Array.isArray(node.nextNodes) &&
-                node.nextNodes.some(
-                  (next) => next.nextNodeName === processInstanceInfo.currentStepName,
-                )
-              );
-            })
-            .map((node) => ({
-              nextNodeName: node.name,
-              nodeType: 2, // 回退类型
+          // 开始节点（stepNodeType === 1），回退时不允许选到开始节点
+          const startNode = definition.nodes.find((n) => n.stepNodeType === 1);
+          // 从当前节点的 nextNodes 中取 nodeType === 2（回退）且目标不是开始节点的项
+          const prevNodes = (currentNode.nextNodes || [])
+            .filter(
+              (next) =>
+                next.nodeType === 2 && next.nextNodeName !== startNode?.name,
+            )
+            .map((next) => ({
+              nextNodeName: next.nextNodeName,
+              nodeType: 2,
             }));
 
           setPreviousNodes(prevNodes);
@@ -167,13 +154,13 @@ export default function RejectConfirm({
               },
             }));
           } else {
-            // 如果没有前序节点，尝试从当前节点的 nextNodes 中找回退节点
+            // 如果没有可选回退节点，尝试从当前节点的 nextNodes 中取第一个回退且非开始节点的项
             if (
               currentNode.nextNodes &&
               Array.isArray(currentNode.nextNodes)
             ) {
               const backNode = currentNode.nextNodes.find(
-                (n) => n.nodeType === 2,
+                (n) => n.nodeType === 2 && n.nextNodeName !== startNode?.name,
               );
               if (backNode) {
                 setSelectedPreviousNode(backNode.nextNodeName);
@@ -197,6 +184,11 @@ export default function RejectConfirm({
       fetchDefinitionInfo();
     }
   }, [processInstanceInfo, visible]);
+
+  /** 仅当填写驳回原因且已选择回退节点时可点击确认驳回 */
+  const canSubmit =
+    Boolean(formData.data.Remark?.trim()) &&
+    Boolean(formData.data.DecideBranching?.trim());
 
   const handleSubmit = async () => {
     try {
@@ -241,10 +233,9 @@ export default function RejectConfirm({
 
       // 提交驳回请求
       await StartActivityAsync(formData);
-      console.log('提交驳回数据:', formData);
+      setVisible(false);
       navigation.goBack();
       Alert.alert('提交成功', '流程已驳回');
-      setVisible(false);
     } catch (error) {
       console.error('驳回失败:', error);
       Alert.alert('提交失败', '请检查网络后重试');
@@ -253,35 +244,23 @@ export default function RejectConfirm({
 
   return (
     <>
-      <Drawer
-        isOpen={visible}
-        onClose={() => {
-          setVisible(false);
-        }}
-        size="lg"
-        anchor="bottom"
+      <BottomSheetModal
+        visible={visible}
+        onClose={() => setVisible(false)}
+        heightRatio={0.78}
       >
-        <DrawerBackdrop />
-        <DrawerContent
-          className="p-0"
-          style={{ backgroundColor: '#fff', flex: 1 }}
-        >
-          <DrawerHeader className="p-3">
-            <Center className="w-full">
-              <Heading size="md">驳回</Heading>
-            </Center>
-            <Pressable
-              style={styles.closeButton}
-              onPress={() => {
-                setVisible(false);
-              }}
-              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            >
-              <Icon as={CloseIcon} size="md" color="#000" />
-            </Pressable>
-          </DrawerHeader>
-          {/* 主要内容 */}
-          <ScrollView style={styles.content}>
+        <View style={styles.sheetHeader}>
+          <Heading size="md">驳回</Heading>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setVisible(false)}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            activeOpacity={0.7}
+          >
+            <AntDesign name="close" size={22} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
             {/* 驳回原因卡片 */}
             <View style={styles.card}>
               <Text style={styles.cardTitle}>驳回原因（必填）</Text>
@@ -376,22 +355,35 @@ export default function RejectConfirm({
                 驳回后流程将回退到指定节点，请谨慎操作
               </Text>
             </View>
-          </ScrollView>
-          {/* 底部操作栏 */}
-          <SafeAreaView style={{ backgroundColor: '#fff' }}>
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.rejectButton]}
-                onPress={handleSubmit}
-                activeOpacity={0.8}
-              >
-                <AntDesign name="close-circle" size={20} color="#fff" />
-                <Text style={styles.actionText}>确认驳回</Text>
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </DrawerContent>
-      </Drawer>
+        </ScrollView>
+        <SafeAreaView style={styles.sheetFooter}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.rejectButton,
+              !canSubmit && styles.rejectButtonDisabled,
+            ]}
+            onPress={canSubmit ? handleSubmit : undefined}
+            activeOpacity={canSubmit ? 0.8 : 1}
+            disabled={!canSubmit}
+          >
+            <AntDesign name="close-circle" size={20} color="#fff" />
+            <Text
+              style={[
+                styles.actionText,
+                !canSubmit && styles.actionTextDisabled,
+              ]}
+            >
+              确认驳回
+            </Text>
+          </TouchableOpacity>
+          {!canSubmit && (
+            <Text style={styles.submitHint}>
+              请填写驳回原因并选择回退节点后再提交
+            </Text>
+          )}
+        </SafeAreaView>
+      </BottomSheetModal>
       {visibleErrorModal && errors && (
         <ValidationErrorModal
           errors={errors}
@@ -406,10 +398,28 @@ export default function RejectConfirm({
 }
 
 const styles = StyleSheet.create({
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e8e8e8',
+    backgroundColor: '#fff',
+  },
   content: {
     flex: 1,
     padding: 16,
     backgroundColor: '#f5f5f5',
+    minHeight: 0,
+  },
+  sheetFooter: {
+    padding: 12,
+    paddingBottom: 24,
+    backgroundColor: '#fff',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: '#e8e8e8',
   },
   card: {
     backgroundColor: '#fff',
@@ -497,6 +507,19 @@ const styles = StyleSheet.create({
   },
   rejectButton: {
     backgroundColor: '#FF4D4F',
+  },
+  rejectButtonDisabled: {
+    backgroundColor: '#bfbfbf',
+    opacity: 0.9,
+  },
+  actionTextDisabled: {
+    opacity: 0.95,
+  },
+  submitHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#8c8c8c',
+    textAlign: 'center',
   },
   actionText: {
     color: '#fff',

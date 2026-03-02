@@ -2,12 +2,11 @@
 import axios, { AxiosError, AxiosRequestConfig } from 'axios';
 import { Alert, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '@/config/api';
 
 // 根据平台和环境设置 baseURL
 // Web 平台在开发环境使用代理路径，避免 CORS 问题
 const getBaseURL = () => {
-  const API_BASE_URL = 'http://192.168.2.13:44359';
-  
   if (Platform.OS === 'web' && __DEV__) {
     // Web 平台开发环境：使用代理服务器
     // 代理服务器运行在 http://localhost:3001，将 /api 请求转发到后端
@@ -46,10 +45,22 @@ apiClient.interceptors.response.use(
       | AxiosError<{ message?: string } | { error?: { message?: string } }>
       | any,
   ) => {
-    const errorMessage =
-      error.response?.data?.error?.message ||
-      error.response?.data?.message ||
-      error.message;
+    const data = error.response?.data;
+    const fromObject =
+      typeof data === 'object' &&
+      (data?.error?.message ?? data?.message ?? data?.detail ?? data?.title);
+    const fromString = typeof data === 'string' && data.trim() ? data : null;
+    let errorMessage = fromObject || fromString || error.message;
+
+    // 400 且无具体信息时给出可操作提示
+    if (
+      error.response?.status === 400 &&
+      !fromObject &&
+      !fromString
+    ) {
+      errorMessage =
+        '请求参数错误，请检查审批意见与接收人是否已填写完整。';
+    }
 
     // 统一错误提示
     Alert.alert('请求错误', errorMessage);

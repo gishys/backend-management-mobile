@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   View,
   TextInput,
@@ -8,18 +8,10 @@ import {
   StyleSheet,
   SafeAreaView,
 } from 'react-native';
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerContent,
-  DrawerHeader,
-} from '@/components/ui/drawer';
+import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { AntDesign } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { Heading } from '../ui/heading';
-import { CloseIcon, Icon } from '../ui/icon';
-import { Pressable } from '../ui/pressable';
-import { Center } from '../ui/center';
 import {
   getWkDefinitionDetailsAsync,
   StartActivityAsync,
@@ -60,6 +52,7 @@ export default function ApprovalConfirm({
   });
   const toast = useToast();
   const [toastId, setToastId] = useState<string>('0');
+  const listRef = useRef<{ scrollToOffset: (p: { offset: number; animated?: boolean }) => void } | null>(null);
   const handleToast = (message: string) => {
     if (!toast.isActive(toastId)) {
       showNewToast(message);
@@ -141,6 +134,12 @@ export default function ApprovalConfirm({
     };
     fetchDefinitionInfo();
   }, [processInstanceInfo]);
+  /** 仅当下一节点已确定、填写审批意见且已选择接收人时可点击确认通过 */
+  const canSubmit =
+    Boolean(formData.data.DecideBranching?.trim()) &&
+    Boolean(formData.data.Remark?.trim()) &&
+    Boolean(formData.data.Candidates?.trim());
+
   const verifyAttachment = async () => {
     //验证附件是否上传
     const catalogueResult = await verifyCataloguesAsync(
@@ -164,32 +163,32 @@ export default function ApprovalConfirm({
       const { error } = await validateAsync(formData);
       if (error) {
         if (error instanceof Yup.ValidationError) {
-          if (error instanceof Yup.ValidationError) {
-            const m = error.inner.map((e) => ({
-              path: e.path,
-              message: e.message,
-            }));
-            setVisibleErrorModal(true);
-            setErrors(m);
-          }
+          const m = error.inner.map((e) => ({
+            path: e.path,
+            message: e.message,
+          }));
+          setVisibleErrorModal(true);
+          setErrors(m);
         } else {
           handleToast('发生未知错误！');
         }
         return;
       }
       if (!formData.data.Remark) {
-        console.log(1);
         setIsInvalidAuditComments(true);
         return;
       } else {
         setIsInvalidAuditComments(false);
       }
       if (!formData.data.Candidates) {
-        console.log(2);
         setIsInvalidSelectReceiver(true);
         return;
       } else {
         setIsInvalidSelectReceiver(false);
+      }
+      if (!formData.data.DecideBranching?.trim()) {
+        handleToast('无法确定下一节点，请关闭审批窗口后重新打开再试');
+        return;
       }
       if (processInstanceInfo.form_data) {
         await updateExecutionPointerAsync(
@@ -197,104 +196,163 @@ export default function ApprovalConfirm({
           { form_data: processInstanceInfo.form_data },
         );
       }
-      await StartActivityAsync(formData);
-      // 调用审批API
-      console.log('提交审批数据:', formData);
+      const submitDebug = {
+        activityName: formData.activityName,
+        workflowId: formData.workflowId,
+        data: {
+          DecideBranching: formData.data.DecideBranching,
+          ExecutionType: formData.data.ExecutionType,
+          Candidates: formData.data.Candidates,
+          RemarkLength: formData.data.Remark?.length ?? 0,
+          RemarkPreview: (formData.data.Remark ?? '').slice(0, 50),
+        },
+        processInstanceInfo: {
+          wkInstanceKey: processInstanceInfo.wkInstanceKey,
+          currentPointerId: processInstanceInfo.currentPointerId,
+          currentStepName: processInstanceInfo.currentStepName,
+          definitionId: processInstanceInfo.definitionId,
+          version: processInstanceInfo.version,
+        },
+      };
+      console.log(
+        '[ApprovalConfirm] StartActivity payload',
+        JSON.stringify(submitDebug, null, 2),
+      );
+
+      const res = await StartActivityAsync(formData);
+      console.log('[ApprovalConfirm] StartActivity response', {
+        status: res?.status,
+        data: res?.data,
+      });
+      setVisible(false);
       navigation.goBack();
       Alert.alert('提交成功', '审批已通过');
-    } catch (error) {
-      Alert.alert('提交失败', '请检查网络后重试');
+    } catch (error: any) {
+      const res = error?.response;
+      const status = res?.status;
+      const body = res?.data;
+      // 便于排查 400：打印完整请求体与响应体
+      if (status === 400) {
+        console.warn('[ApprovalConfirm] StartActivity 400', {
+          requestBody: {
+            ActivityName: formData.activityName,
+            WorkflowId: formData.workflowId,
+            Data: formData.data,
+          },
+          responseBody: body != null
+            ? typeof body === 'string'
+              ? body || '(空字符串)'
+              : JSON.stringify(body)
+            : '(无)',
+        });
+      } else {
+        console.log('[ApprovalConfirm] StartActivity error', {
+          status: status,
+          data: body,
+          message: error?.message,
+        });
+      }
+      // 拦截器已展示“请求错误”文案，此处仅对无 response 的网络错误补充提示
+      if (!error?.response) {
+        Alert.alert('提交失败', '请检查网络后重试');
+      }
     }
   };
   return (
     <>
-      <Drawer
-        isOpen={visible}
-        onClose={() => {
-          setVisible(false);
-        }}
-        size="lg"
-        anchor="bottom"
+      <BottomSheetModal
+        visible={visible}
+        onClose={() => setVisible(false)}
+        heightRatio={0.78}
       >
-        <DrawerBackdrop />
-        <DrawerContent
-          className="p-0"
-          style={{ backgroundColor: '#fff', flex: 1 }}
-        >
-          <DrawerHeader className="p-3">
-            <Center className="w-full">
-              <Heading size="md">审批</Heading>
-            </Center>
-            <Pressable
-              style={styles.closeButton}
-              onPress={() => {
-                setVisible(false);
-              }}
-              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            >
-              <Icon as={CloseIcon} size="md" color="#000" />
-            </Pressable>
-          </DrawerHeader>
-          {/* 主要内容 */}
-          <View style={styles.content}>
-            {/* 审批意见卡片 */}
-            <View style={styles.card}>
-              <TextInput
-                style={styles.commentInput}
-                placeholder="请输入审批意见（必填）"
-                multiline
-                numberOfLines={4}
-                value={formData.data.Remark}
-                onChangeText={(text) =>
+        <View style={styles.sheetHeader}>
+          <Heading size="md">审批</Heading>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setVisible(false)}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            activeOpacity={0.7}
+          >
+            <AntDesign name="close" size={22} color="#333" />
+          </TouchableOpacity>
+        </View>
+        {/* 审批意见放在列表头部，键盘弹出时随 FlatList 滚动保持可见 */}
+        <View style={styles.content}>
+          <View style={[styles.card, styles.candidateCard]}>
+            <CondidateTreeList
+              ref={listRef}
+              wkInstanceKey={processInstanceInfo.wkInstanceKey}
+              onSlectKeys={(keys) => {
+                if (keys.length > 0)
                   setFormData({
                     ...formData,
-                    data: { ...formData.data, Remark: text },
-                  })
-                }
-              />
-              {isInvalidAuditComments && (
-                <Text style={styles.errorText}>{'审批意见不能为空'}</Text>
-              )}
-            </View>
-            {/* 流程设置卡片 */}
-            <View style={{ ...styles.card, height: 330 }}>
-              <CondidateTreeList
-                wkInstanceKey={processInstanceInfo.wkInstanceKey}
-                onSlectKeys={(keys) => {
-                  if (keys.length > 0)
-                    setFormData({
-                      ...formData,
-                      data: { ...formData.data, Candidates: keys.join(',') },
-                    });
-                }}
-              />
-              {isInvalidSelectReceiver && (
-                <Text style={styles.errorText}>{'请选择接收人'}</Text>
-              )}
-            </View>
+                    data: { ...formData.data, Candidates: keys.join(',') },
+                  });
+              }}
+              ListHeaderComponent={
+                <View style={styles.commentCard}>
+                  <TextInput
+                    style={styles.commentInput}
+                    placeholder="请输入审批意见（必填）"
+                    multiline
+                    numberOfLines={4}
+                    value={formData.data.Remark}
+                    onChangeText={(text) =>
+                      setFormData({
+                        ...formData,
+                        data: { ...formData.data, Remark: text },
+                      })
+                    }
+                    onFocus={() => {
+                      requestAnimationFrame(() => {
+                        listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                      });
+                    }}
+                  />
+                  {isInvalidAuditComments && (
+                    <Text style={styles.errorText}>审批意见不能为空</Text>
+                  )}
+                </View>
+              }
+            />
+            {isInvalidSelectReceiver && (
+              <Text style={styles.errorText}>请选择接收人</Text>
+            )}
           </View>
-          {/* 底部操作栏 */}
-          <SafeAreaView style={{ backgroundColor: '#fff' }}>
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[styles.actionButton, styles.submitButton]}
-                onPress={handleSubmit}
-                activeOpacity={0.8}
-              >
-                <AntDesign name="check-circle" size={20} color="#fff" />
-                <Text style={styles.actionText}>确认通过</Text>
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </DrawerContent>
-      </Drawer>
+        </View>
+        <SafeAreaView style={styles.sheetFooter}>
+          <TouchableOpacity
+            style={[
+              styles.actionButton,
+              styles.submitButton,
+              !canSubmit && styles.submitButtonDisabled,
+            ]}
+            onPress={canSubmit ? handleSubmit : undefined}
+            activeOpacity={canSubmit ? 0.8 : 1}
+            disabled={!canSubmit}
+          >
+            <AntDesign name="check-circle" size={20} color="#fff" />
+            <Text
+              style={[
+                styles.actionText,
+                !canSubmit && styles.actionTextDisabled,
+              ]}
+            >
+              确认通过
+            </Text>
+          </TouchableOpacity>
+          {!canSubmit && (
+            <Text style={styles.submitHint}>
+              请填写审批意见并选择接收人后再提交（需等待节点加载完成）
+            </Text>
+          )}
+        </SafeAreaView>
+      </BottomSheetModal>
       {visibleErrorModal && errors && (
         <ValidationErrorModal
           errors={errors}
           visible={visibleErrorModal}
-          onClose={() => {
-            setVisibleErrorModal(false);
-          }}
+          onClose={() => setVisibleErrorModal(false)}
         />
       )}
     </>
@@ -302,63 +360,52 @@ export default function ApprovalConfirm({
 }
 
 const styles = StyleSheet.create({
-  header: {
+  sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    borderBottomColor: '#e8e8e8',
+    backgroundColor: '#fff',
   },
   content: {
     flex: 1,
-    padding: 8,
+    padding: 12,
     backgroundColor: '#f5f5f5',
+    minHeight: 0,
   },
   card: {
     backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 8,
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-    marginBottom: 16,
+  candidateCard: {
+    flex: 1,
+    minHeight: 280,
+  },
+  commentCard: {
+    marginBottom: 12,
+    paddingBottom: 4,
   },
   commentInput: {
-    height: 100,
+    minHeight: 100,
     borderWidth: 1,
     borderColor: '#e0e0e0',
-    borderRadius: 6,
+    borderRadius: 8,
     padding: 12,
     fontSize: 16,
     textAlignVertical: 'top',
+    backgroundColor: '#fafafa',
   },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  optionText: {
-    fontSize: 16,
-    color: '#333',
-    marginLeft: 12,
-  },
-  footer: {
+  sheetFooter: {
     padding: 12,
+    paddingBottom: 24,
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#e8e8e8',
   },
   actionButton: {
     flexDirection: 'row',
@@ -367,28 +414,40 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: '#1890FF',
+    gap: 8,
   },
   actionText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '500',
-    marginLeft: 8,
+    fontWeight: '600',
   },
   submitButton: {
-    alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 20,
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#bfbfbf',
+    opacity: 0.9,
+  },
+  actionTextDisabled: {
+    opacity: 0.95,
+  },
+  submitHint: {
+    marginTop: 8,
+    fontSize: 12,
+    color: '#8c8c8c',
+    textAlign: 'center',
   },
   closeButton: {
     position: 'absolute',
-    top: 15,
-    right: 15,
-    zIndex: 9999,
+    right: 12,
+    top: 12,
+    zIndex: 10,
   },
   errorText: {
-    color: 'red',
+    color: '#ff4d4f',
     fontSize: 12,
-    marginLeft: 8,
+    marginTop: 6,
+    marginLeft: 4,
   },
 });

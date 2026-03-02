@@ -245,12 +245,12 @@ const ReadOnlyForm = ({
                 />
               </View>
               <View style={styles.sectionTitleContainer}>
-                <Text style={styles.sectionTitle}>{section.title}</Text>
-                {section.description && (
+                <Text style={styles.sectionTitle}>{section.title != null ? String(section.title) : ''}</Text>
+                {section.description ? (
                   <Text style={styles.sectionDescription}>
                     {section.description}
                   </Text>
-                )}
+                ) : null}
               </View>
               <View style={styles.sectionBadge}>
                 <Text style={styles.sectionBadgeText}>
@@ -442,13 +442,11 @@ const FieldRow = ({
             </View>
           </LinearGradient>
           <View style={styles.labelTextContainer}>
-            <Text style={styles.label}>
-              {field.label}
-              {field.required && (
-                <AntDesign name="star" size={12} color={COLORS.error} style={styles.requiredIcon} />
-              )}
-            </Text>
-            {field.type && (
+            <Text style={styles.label}>{field.label != null ? String(field.label) : ''}</Text>
+            {field.required ? (
+              <AntDesign name="star" size={12} color={COLORS.error} style={styles.requiredIcon} />
+            ) : null}
+            {field.type ? (
               <View style={styles.fieldTypeBadge}>
                 <Text style={styles.fieldTypeText}>
                   {field.type === 'date' ? '日期' :
@@ -458,7 +456,7 @@ const FieldRow = ({
                    field.type === 'group' ? '分组' : '文本'}
                 </Text>
               </View>
-            )}
+            ) : null}
           </View>
         </View>
 

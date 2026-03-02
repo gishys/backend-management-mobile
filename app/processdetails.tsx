@@ -19,6 +19,7 @@ import {
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react';
 import RejectConfirm from '@/components/workflow/RejectConfirm';
+import ApprovalConfirm from '@/components/workflow/ApprovalConfirm';
 import { ProcessInstanceInfo } from '@/components/workflow/ApprovalDetail';
 import {
   ActivityIndicator,
@@ -42,6 +43,7 @@ export default function ProcessDetails() {
   const [formSections, setFormSections] = useState<FormSection[]>([]);
   const [attachments, setAttachments] = useState<AttachCatalogue[]>([]);
   const [processInstanceInfo, setProcessInstanceInfo] = useState<ProcessInstanceInfo | null>(null);
+  const [approveConfirmVisible, setApproveConfirmVisible] = useState(false);
   const [rejectConfirmVisible, setRejectConfirmVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -276,6 +278,7 @@ export default function ProcessDetails() {
             activeOpacity={0.8}
             onPress={() => {
               if (processInstanceInfo) {
+                setApproveConfirmVisible(false); // 互斥：打开驳回时关闭通过弹窗
                 setRejectConfirmVisible(true);
               } else {
                 console.warn('流程实例信息未加载完成');
@@ -304,7 +307,14 @@ export default function ProcessDetails() {
           <TouchableOpacity
             style={[styles.button, styles.approveButton]}
             activeOpacity={0.8}
-            onPress={() => console.log('通过')}
+            onPress={() => {
+              if (processInstanceInfo) {
+                setRejectConfirmVisible(false); // 互斥：打开通过时关闭驳回弹窗
+                setApproveConfirmVisible(true);
+              } else {
+                console.warn('流程实例信息未加载完成');
+              }
+            }}
           >
             <AntDesign name="check-circle" size={24} color="#1890FF" />
             <Text style={[styles.buttonControlText, { color: '#1890FF' }]}>
@@ -313,9 +323,9 @@ export default function ProcessDetails() {
           </TouchableOpacity>
           {/* 更多 */}
           <TouchableOpacity
-            style={[styles.button, styles.approveButton]}
+            style={[styles.button, styles.moreButton]}
             activeOpacity={0.8}
-            onPress={() => console.log('通过')}
+            onPress={() => console.log('更多')}
           >
             <Feather name="more-horizontal" size={24} color="black" />
             <Text style={[styles.buttonControlText, { color: 'black' }]}>
@@ -324,6 +334,14 @@ export default function ProcessDetails() {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      {/* 通过确认对话框 */}
+      {approveConfirmVisible && processInstanceInfo && (
+        <ApprovalConfirm
+          visible={approveConfirmVisible}
+          setVisible={setApproveConfirmVisible}
+          processInstanceInfo={processInstanceInfo}
+        />
+      )}
       {/* 驳回确认对话框 */}
       {rejectConfirmVisible && processInstanceInfo && (
         <RejectConfirm

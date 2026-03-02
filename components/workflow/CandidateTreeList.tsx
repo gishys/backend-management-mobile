@@ -1,12 +1,16 @@
 import { getWkInstancePointerCandidateAsync } from '@/api/workflow/instance';
-import React, { useEffect, useState } from 'react';
-import TreeList, { TreeNode } from './TreeList';
+import React, { forwardRef, useEffect, useState } from 'react';
+import TreeList, { TreeNode, TreeListRef } from './TreeList';
 
-const CondidateTreeList: React.FC<{
-  wkInstanceKey: string;
-  onSlectKeys: (keys: string[]) => void;
-}> = ({ wkInstanceKey, onSlectKeys }) => {
-  const [allNodes, setAllNodes] = useState<TreeNode[]>([]); // 你的初始数据
+const CondidateTreeList = forwardRef<
+  TreeListRef,
+  {
+    wkInstanceKey: string;
+    onSlectKeys: (keys: string[]) => void;
+    ListHeaderComponent?: React.ReactElement | null;
+  }
+>(function CondidateTreeList({ wkInstanceKey, onSlectKeys, ListHeaderComponent }, ref) {
+  const [allNodes, setAllNodes] = useState<TreeNode[]>([]);
   useEffect(() => {
     const init = async () => {
       if (!wkInstanceKey) return;
@@ -28,7 +32,14 @@ const CondidateTreeList: React.FC<{
     };
     init();
   }, [wkInstanceKey]);
-  return <TreeList nodes={allNodes} onSlectKeys={onSlectKeys} />;
-};
+  return (
+    <TreeList
+      ref={ref}
+      nodes={allNodes}
+      onSlectKeys={onSlectKeys}
+      ListHeaderComponent={ListHeaderComponent}
+    />
+  );
+});
 
 export default CondidateTreeList;

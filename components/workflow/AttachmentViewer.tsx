@@ -1,18 +1,6 @@
 import { useState } from 'react';
-import {
-  Animated,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import {
-  Drawer,
-  DrawerBackdrop,
-  DrawerContent,
-  DrawerHeader,
-  DrawerBody,
-} from '@/components/ui/drawer';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { Heading } from '../ui/heading';
 import { AntDesign } from '@expo/vector-icons';
 import { FileExplorer } from '../files/FileExplorer';
@@ -23,32 +11,14 @@ export default function AttachmentViewer({
 }: {
   attachments: AttachCatalogue[];
 }) {
-  const [drawerVisible, setDrawerVisible] = useState(false);
-  const drawerAnim = useState(new Animated.Value(0))[0];
-  const toggleDrawer = () => {
-    if (!drawerVisible) {
-      setDrawerVisible(true);
-      Animated.timing(drawerAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      Animated.timing(drawerAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => setDrawerVisible(false));
-    }
-  };
+  const [visible, setVisible] = useState(false);
+
   return (
     <>
       <TouchableOpacity
         style={styles.verticalButton}
         activeOpacity={0.8}
-        onPress={() => {
-          toggleDrawer();
-        }}
+        onPress={() => setVisible(true)}
       >
         <View style={styles.buttonContent}>
           <Text style={styles.buttonText}>查</Text>
@@ -57,34 +27,26 @@ export default function AttachmentViewer({
           <Text style={styles.buttonText}>件</Text>
         </View>
       </TouchableOpacity>
-      <Drawer
-        isOpen={drawerVisible}
-        onClose={() => {
-          setDrawerVisible(false);
-        }}
-        size="lg"
-        anchor="bottom"
+      <BottomSheetModal
+        visible={visible}
+        onClose={() => setVisible(false)}
+        heightRatio={0.75}
       >
-        <DrawerBackdrop />
-        <DrawerContent>
-          <DrawerHeader>
-            <Heading size="md">查看附件</Heading>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => {
-                setDrawerVisible(false);
-              }}
-              activeOpacity={0.7}
-              hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-            >
-              <AntDesign name="close-circle" size={20} color="#000" />
-            </TouchableOpacity>
-          </DrawerHeader>
-          <DrawerBody>
-            <FileExplorer data={attachments} />
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+        <View style={styles.sheetHeader}>
+          <Heading size="md">查看附件</Heading>
+          <TouchableOpacity
+            style={styles.closeButton}
+            onPress={() => setVisible(false)}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            activeOpacity={0.7}
+          >
+            <AntDesign name="close" size={22} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.sheetBody}>
+          <FileExplorer data={attachments} />
+        </View>
+      </BottomSheetModal>
     </>
   );
 }
@@ -94,12 +56,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 120,
+    zIndex: 9999,
+    elevation: 9999,
     backgroundColor: '#1890ff',
     borderTopLeftRadius: 4,
     borderBottomLeftRadius: 4,
     paddingVertical: 6,
     paddingHorizontal: 3,
-    elevation: 3,
     shadowColor: 'rgba(24, 144, 255, 0.3)',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 1,
@@ -118,10 +81,25 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     textAlignVertical: 'center',
   },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e8e8e8',
+    backgroundColor: '#fff',
+  },
+  sheetBody: {
+    flex: 1,
+    minHeight: 200,
+    backgroundColor: '#fff',
+  },
   closeButton: {
     position: 'absolute',
-    top: 5,
-    right: 0,
-    zIndex: 9999,
+    top: 12,
+    right: 12,
+    zIndex: 10,
   },
 });

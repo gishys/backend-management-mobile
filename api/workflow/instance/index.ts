@@ -9,6 +9,7 @@ import {
   WkCandidateDto,
   WkActivityCreateDto,
   WorkflowDefinition,
+  WkNodeTreeDto,
 } from '@/types/workflow/instance/processInstance.types';
 
 export const fetchMyWkInstances = async (
@@ -80,9 +81,14 @@ export async function getWkInstancePointerCandidateAsync(paras: {
   );
 }
 
-/**提交业务流程 */
+/** 提交业务流程（后端 WkActivityInputDto 使用 PascalCase） */
 export async function StartActivityAsync(data: WkActivityCreateDto) {
-  return await apiClient.post<null>('/hxworkflow/workflow/activity', data);
+  const body = {
+    ActivityName: data.activityName,
+    WorkflowId: data.workflowId,
+    Data: data.data,
+  };
+  return await apiClient.post<null>('/hxworkflow/workflow/activity', body);
 }
 
 /**获取流程模板详情 */
@@ -101,6 +107,17 @@ export async function InitMaterialsAsync(data: { executionPointerId: string }) {
     '/hxworkflow/workflow/mywkinstance/materials',
     data,
   );
+}
+
+/** 获取流程实例节点（审批流程时间轴） */
+export async function getInstanceNodesAsync(
+  workflowId: string,
+): Promise<WkNodeTreeDto[]> {
+  const response = await apiClient.get<WkNodeTreeDto[]>(
+    '/hxworkflow/workflow/workflowinstancenodes',
+    { params: { workflowId } },
+  );
+  return response.data ?? [];
 }
 
 /**更新节点扩展字段 */

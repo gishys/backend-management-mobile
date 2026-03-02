@@ -75,6 +75,14 @@ function RootLayoutNav() {
               options={{ headerShown: false, animation: 'fade_from_bottom' }}
             />
             <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+            <Stack.Screen
+              name="myprocesses"
+              options={{
+                headerShown: true,
+                title: '我的办理',
+                headerBackTitle: '我的',
+              }}
+            />
             <Stack.Screen name="processdetails" options={{}} />
           </>
         ) : (

@@ -1,12 +1,14 @@
 // 开发环境代理服务器
 // 用于解决 Web 平台的 CORS 问题
 // 使用方法：node scripts/dev-proxy.js
+// API 地址与 config/api.json 统一配置
 
 const http = require('http');
 const httpProxy = require('http-proxy');
+const path = require('path');
 
 const PORT = 3001; // 代理服务器端口
-const API_TARGET = 'http://192.168.2.13:44359'; // 后端 API 地址
+const API_TARGET = require(path.join(__dirname, '../config/api.json')).API_BASE_URL;
 
 // 创建代理服务器
 const proxy = httpProxy.createProxyServer({

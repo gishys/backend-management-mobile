@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useImperativeHandle, forwardRef } from 'react';
 import {
   FlatList,
   TextInput,
@@ -22,17 +22,34 @@ interface FlattenedNode extends TreeNode {
   parentIds: string[];
 }
 
+export interface TreeListRef {
+  scrollToOffset: (params: { offset: number; animated?: boolean }) => void;
+}
+
 interface TreeListProps {
   nodes: TreeNode[];
   onSlectKeys: (keys: string[]) => void;
   selectable?: (node: TreeNode) => boolean;
+  /** 列表头部内容（如审批意见输入框），便于键盘弹出时随列表滚动保持可见 */
+  ListHeaderComponent?: React.ReactElement | null;
 }
 
-const TreeList: React.FC<TreeListProps> = ({
-  nodes,
-  onSlectKeys,
-  selectable = (n) => n.type === 'person',
-}) => {
+const TreeList = forwardRef<TreeListRef, TreeListProps>(function TreeList(
+  {
+    nodes,
+    onSlectKeys,
+    selectable = (n) => n.type === 'person',
+    ListHeaderComponent,
+  },
+  ref,
+) {
+  const flatListRef = useRef<FlatList<FlattenedNode>>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollToOffset: (params) => {
+      flatListRef.current?.scrollToOffset({ offset: params.offset, animated: params.animated ?? true });
+    },
+  }), []);
   const [searchText, setSearchText] = useState('');
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [selectedNodes, setSelectedNodes] = useState<Set<string>>(new Set());
@@ -128,15 +145,17 @@ const TreeList: React.FC<TreeListProps> = ({
       />
       {/* 问题1修复：移除外部滚动容器 */}
       <FlatList
+        ref={flatListRef}
         data={filteredData}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
       />
     </View>
   );
-};
+});
 
 interface TreeNodeComponentProps {
   node: FlattenedNode;

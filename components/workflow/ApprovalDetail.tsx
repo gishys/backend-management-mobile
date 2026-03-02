@@ -8,25 +8,28 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign, Feather } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { getProcessInstanceStateTitle } from '@/utils/workflow';
 import { FormSection } from '@/types/workflow/form/form.types';
+import { AttachCatalogue } from '@/types/workflow/instance/processInstance.types';
+import {
+  getInstanceNodesAsync,
+  getWkDefinitionDetailsAsync,
+} from '@/api/workflow/instance';
 import ApprovalConfirm from './ApprovalConfirm';
 import RejectConfirm from './RejectConfirm';
 import ReadOnlyForm from '@/components/form/ReadOnlyForm';
+import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
+import { FileExplorer } from '@/components/files/FileExplorer';
 
-// 模拟审批数据
-const approvalData = {
-  timeline: [
-    { time: '2023-08-15 09:30', action: '提交申请', operator: '张三' },
-    {
-      time: '2023-08-15 10:15',
-      action: '审批通过',
-      operator: '李四',
-      comment: '符合报销标准',
-    },
-  ],
+/** 审批流程时间轴单条 */
+export type ApprovalTimelineItem = {
+  time: string;
+  action: string;
+  operator: string;
+  comment?: string;
 };
+
 export interface ProcessInstanceInfo {
   wkInstanceKey: string;
   currentPointerId: string;
@@ -41,84 +44,275 @@ export interface ProcessInstanceInfo {
 interface ApprovalDetailsProps {
   procesInstanceInfo?: ProcessInstanceInfo;
   sections: FormSection[];
+  /** 附件列表，有则显示「查看附件」按钮 */
+  attachments?: AttachCatalogue[];
 }
 
 export default function ApprovalDetail({
   procesInstanceInfo,
   sections,
+  attachments = [],
 }: ApprovalDetailsProps) {
   const [approvalConfirmVisible, setApprovalConfirmVisible] =
     useState<boolean>(false);
   const [rejectConfirmVisible, setRejectConfirmVisible] =
     useState<boolean>(false);
+  const [attachmentVisible, setAttachmentVisible] = useState(false);
+  const [timeline, setTimeline] = useState<ApprovalTimelineItem[]>([]);
+  const [timelineLoading, setTimelineLoading] = useState(false);
+  /** 当前节点是否存在可回退目标（无则驳回按钮不可用） */
+  const [canReject, setCanReject] = useState(false);
+
+  // 根据流程定义计算是否有可驳回的回退节点
+  useEffect(() => {
+    if (!procesInstanceInfo?.definitionId || !procesInstanceInfo?.currentStepName) {
+      setCanReject(false);
+      return;
+    }
+    let cancelled = false;
+    getWkDefinitionDetailsAsync({
+      id: procesInstanceInfo.definitionId,
+      version: procesInstanceInfo.version ?? 1,
+    })
+      .then((res) => {
+        if (cancelled) return;
+        const definition = res.data || res;
+        if (!definition?.nodes || !Array.isArray(definition.nodes)) {
+          setCanReject(false);
+          return;
+        }
+        const currentNode = definition.nodes.find(
+          (d: { name: string }) => d.name === procesInstanceInfo?.currentStepName,
+        );
+        if (!currentNode?.nextNodes?.length) {
+          setCanReject(false);
+          return;
+        }
+        const startNode = definition.nodes.find(
+          (n: { stepNodeType?: number }) => n.stepNodeType === 1,
+        );
+        const hasRejectTarget = (currentNode.nextNodes as { nodeType: number; nextNodeName: string }[]).some(
+          (next) =>
+            next.nodeType === 2 && next.nextNodeName !== startNode?.name,
+        );
+        setCanReject(hasRejectTarget);
+      })
+      .catch(() => {
+        if (!cancelled) setCanReject(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    procesInstanceInfo?.definitionId,
+    procesInstanceInfo?.version,
+    procesInstanceInfo?.currentStepName,
+  ]);
+
+  useEffect(() => {
+    if (!procesInstanceInfo?.wkInstanceKey) {
+      setTimeline([]);
+      return;
+    }
+    let cancelled = false;
+    setTimelineLoading(true);
+    getInstanceNodesAsync(procesInstanceInfo.wkInstanceKey)
+      .then((nodes) => {
+        if (cancelled) return;
+        const items: ApprovalTimelineItem[] = nodes.map((node: any) => {
+          const rawTime =
+            node.submitTime ??
+            node.signInTime ??
+            node.SubmitTime ??
+            node.SignInTime ??
+            '';
+          const timeStr =
+            typeof rawTime === 'string' ? rawTime : String(rawTime ?? '');
+          let time = '—';
+          if (timeStr) {
+            try {
+              const d = new Date(timeStr);
+              time = isNaN(d.getTime())
+                ? String(timeStr)
+                : d.toLocaleString('zh-CN', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  });
+            } catch {
+              time = String(timeStr);
+            }
+          }
+          const action = String(
+            node.title ?? node.name ?? node.Title ?? node.Name ?? '—',
+          );
+          const operator = String(
+            node.receiverName ?? node.receiver ?? node.ReceiverName ?? node.Receiver ?? '—',
+          );
+          return { time, action, operator };
+        });
+        setTimeline(items);
+      })
+      .catch(() => {
+        if (!cancelled) setTimeline([]);
+      })
+      .finally(() => {
+        if (!cancelled) setTimelineLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [procesInstanceInfo?.wkInstanceKey]);
+
+  const openApproval = () => {
+    if (!procesInstanceInfo) {
+      console.warn('流程实例信息未加载完成');
+      return;
+    }
+    setRejectConfirmVisible(false);
+    setAttachmentVisible(false);
+    setApprovalConfirmVisible(true);
+  };
+
+  const openReject = () => {
+    if (!procesInstanceInfo) {
+      console.warn('流程实例信息未加载完成');
+      return;
+    }
+    setApprovalConfirmVisible(false);
+    setAttachmentVisible(false);
+    setRejectConfirmVisible(true);
+  };
+
+  const openAttachment = () => {
+    setApprovalConfirmVisible(false);
+    setRejectConfirmVisible(false);
+    setAttachmentVisible(true);
+  };
+
+  /** 规范化 sections，保证 title/description/label 为字符串，避免子组件渲染时报错 */
+  const normalizedSections = React.useMemo(() => {
+    if (!sections?.length) return [];
+    return sections.map((s) => ({
+      ...s,
+      title: s?.title != null ? String(s.title) : '',
+      description:
+        s?.description != null && s.description !== ''
+          ? String(s.description)
+          : undefined,
+      fields: (s?.fields ?? []).map((f: any) => ({
+        ...f,
+        label: f?.label != null ? String(f.label) : '',
+      })),
+    }));
+  }, [sections]);
+
   return (
-    <View style={{ flex: 1, backgroundColor: '#f5f5f5' }}>
-      <SafeAreaView style={styles.container}>
-        <Header
-          title={procesInstanceInfo?.processType}
-          status={getProcessInstanceStateTitle(procesInstanceInfo?.state)}
-        />
+    <View style={styles.page}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.headerRow}>
+          <Header
+            title={procesInstanceInfo?.processType}
+            status={getProcessInstanceStateTitle(procesInstanceInfo?.state)}
+          />
+        </View>
       </SafeAreaView>
-      {/* 内容区域 */}
-      <ScrollView style={styles.content}>
-        <ReadOnlyForm sections={sections} />
-        {/* 审批流程时间轴 */}
+      {/* 右侧竖排「查看附件」按钮，始终显示 */}
+      <TouchableOpacity
+        style={styles.verticalAttachmentButton}
+        onPress={openAttachment}
+        activeOpacity={0.8}
+        accessibilityLabel="查看附件"
+      >
+        <View style={styles.verticalAttachmentContent}>
+          <Text style={styles.verticalAttachmentText}>查</Text>
+          <Text style={styles.verticalAttachmentText}>看</Text>
+          <Text style={styles.verticalAttachmentText}>附</Text>
+          <Text style={styles.verticalAttachmentText}>件</Text>
+        </View>
+      </TouchableOpacity>
+
+      <ScrollView
+        style={styles.content}
+        contentContainerStyle={styles.contentContainer}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.formWrapper}>
+          <ReadOnlyForm sections={normalizedSections} />
+        </View>
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>审批流程</Text>
-          {approvalData.timeline.map((step, index) => (
-            <TimelineStep
-              key={index}
-              isLast={index === approvalData.timeline.length - 1}
-              {...step}
-            />
-          ))}
+          {timelineLoading ? (
+            <Text style={styles.timelineHint}>加载中...</Text>
+          ) : timeline.length === 0 ? (
+            <Text style={styles.timelineHint}>暂无审批记录</Text>
+          ) : (
+            timeline.map((step, index) => (
+              <TimelineStep
+                key={index}
+                isLast={index === timeline.length - 1}
+                {...step}
+              />
+            ))
+          )}
         </View>
       </ScrollView>
-      <SafeAreaView style={styles.container}>
-        {/* 底部操作栏 */}
+      <SafeAreaView style={styles.container} edges={['bottom']}>
         <View style={styles.footer}>
           <ActionButton
             icon="check-circle"
             label="通过"
             color="#1890FF"
-            onPress={() => {
-              setApprovalConfirmVisible(true);
-            }}
+            onPress={openApproval}
           />
           <ActionButton
             icon="close-circle"
             label="驳回"
             color="#FF4D4F"
-            onPress={() => {
-              if (procesInstanceInfo) {
-                setRejectConfirmVisible(true);
-              } else {
-                console.warn('流程实例信息未加载完成');
-              }
-            }}
-          />
-          <ActionButton
-            icon="swap"
-            label="转交"
-            color="#808080"
-            onPress={() => console.log('转交')}
+            onPress={openReject}
+            disabled={!canReject}
           />
         </View>
       </SafeAreaView>
-      {approvalConfirmVisible && procesInstanceInfo && (
-        <ApprovalConfirm
-          setVisible={setApprovalConfirmVisible}
-          visible={approvalConfirmVisible}
-          processInstanceInfo={procesInstanceInfo}
-        />
+
+      {procesInstanceInfo && (
+        <>
+          <ApprovalConfirm
+            setVisible={setApprovalConfirmVisible}
+            visible={approvalConfirmVisible}
+            processInstanceInfo={procesInstanceInfo}
+          />
+          <RejectConfirm
+            setVisible={setRejectConfirmVisible}
+            visible={rejectConfirmVisible}
+            processInstanceInfo={procesInstanceInfo}
+          />
+        </>
       )}
-      {rejectConfirmVisible && procesInstanceInfo && (
-        <RejectConfirm
-          setVisible={setRejectConfirmVisible}
-          visible={rejectConfirmVisible}
-          processInstanceInfo={procesInstanceInfo}
-        />
-      )}
+
+      <BottomSheetModal
+        visible={attachmentVisible}
+        onClose={() => setAttachmentVisible(false)}
+        heightRatio={0.75}
+      >
+        <View style={styles.sheetHeader}>
+          <Text style={styles.sheetTitle}>查看附件</Text>
+          <TouchableOpacity
+            style={styles.sheetCloseButton}
+            onPress={() => setAttachmentVisible(false)}
+            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            activeOpacity={0.7}
+          >
+            <AntDesign name="close" size={22} color="#333" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.sheetBody}>
+          <FileExplorer data={attachments} />
+        </View>
+      </BottomSheetModal>
     </View>
   );
 }
@@ -154,11 +348,13 @@ const Header = ({ title, status }: { title?: string; status?: string }) => {
           color="#333"
         />
       </TouchableOpacity>
-      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.title}>{title != null ? String(title) : ''}</Text>
       <View
         style={[styles.statusTag, status === '审批中' && styles.pendingTag]}
       >
-        <Text style={styles.statusText}>{status}</Text>
+        <Text style={styles.statusText}>
+          {status != null ? String(status) : ''}
+        </Text>
       </View>
     </View>
   );
@@ -187,7 +383,7 @@ const DetailItem = ({
   </View>
 );
 
-// 时间轴组件
+// 时间轴组件（确保所有展示内容均为字符串，避免 RN 报错）
 const TimelineStep = ({
   time,
   action,
@@ -205,13 +401,13 @@ const TimelineStep = ({
     <View style={styles.timelineDot} />
     {!isLast && <View style={styles.timelineLine} />}
     <View style={styles.timelineContent}>
-      <Text style={styles.timelineTime}>{time}</Text>
+      <Text style={styles.timelineTime}>{String(time)}</Text>
       <Text style={styles.timelineAction}>
-        {operator} {action}
+        {String(operator)} {String(action)}
       </Text>
-      {comment && (
+      {comment != null && comment !== '' && (
         <View style={styles.commentBox}>
-          <Text style={styles.commentText}>{comment}</Text>
+          <Text style={styles.commentText}>{String(comment)}</Text>
         </View>
       )}
     </View>
@@ -224,16 +420,19 @@ const ActionButton = ({
   label,
   color,
   onPress,
+  disabled = false,
 }: {
   icon: any;
   label: string;
   color: string | undefined;
   onPress: () => void;
+  disabled?: boolean;
 }) => (
   <TouchableOpacity
-    style={[styles.actionButton]}
+    style={[styles.actionButton, disabled && styles.actionButtonDisabled]}
     activeOpacity={0.8}
-    onPress={onPress}
+    onPress={disabled ? undefined : onPress}
+    disabled={disabled}
   >
     <AntDesign name={icon} size={24} color={color} />
     <Text style={[styles.actionLabel, { color }]}>{label}</Text>
@@ -242,47 +441,112 @@ const ActionButton = ({
 
 // 样式表
 const styles = StyleSheet.create({
-  header: {
+  page: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    justifyContent: 'space-between',
     backgroundColor: '#fff',
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#e8e8e8',
   },
-  backButton: {
-    paddingRight: 16,
-    marginRight: 8,
+  verticalAttachmentButton: {
+    position: 'absolute',
+    right: 0,
+    top: 88,
+    zIndex: 999,
+    elevation: 8,
+    backgroundColor: '#1890ff',
+    borderTopLeftRadius: 6,
+    borderBottomLeftRadius: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    shadowColor: 'rgba(24, 144, 255, 0.35)',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 6,
   },
-  cardHeader: {
+  verticalAttachmentContent: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  verticalAttachmentText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  sheetHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  cardTitleLine: {
-    width: 3,
-    height: 16,
-    backgroundColor: '#1890ff',
-    borderRadius: 2,
-    marginRight: 8,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
-  },
-  container: {
-    //flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#e8e8e8',
     backgroundColor: '#fff',
   },
-  title: {
+  sheetTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
   },
+  sheetCloseButton: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    zIndex: 10,
+  },
+  sheetBody: {
+    flex: 1,
+    minHeight: 200,
+    backgroundColor: '#fff',
+  },
+  header: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    paddingRight: 0,
+    backgroundColor: 'transparent',
+  },
+  backButton: {
+    paddingRight: 12,
+    marginRight: 4,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  cardTitleLine: {
+    width: 3,
+    height: 14,
+    backgroundColor: '#1890ff',
+    borderRadius: 2,
+    marginRight: 6,
+  },
+  cardTitle: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333',
+  },
+  container: {
+    backgroundColor: '#fff',
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#333',
+  },
   statusTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
   },
   pendingTag: {
@@ -294,103 +558,120 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: 8,
+  },
+  contentContainer: {
+    paddingHorizontal: 10,
+    paddingTop: 6,
+    paddingBottom: 12,
+  },
+  formWrapper: {
+    marginBottom: 6,
   },
   card: {
     backgroundColor: '#fff',
     borderRadius: 8,
-    marginBottom: 8,
-    padding: 16,
+    marginBottom: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   detailText: {
     flex: 1,
-    marginLeft: 12,
+    marginLeft: 10,
   },
   detailTitle: {
     color: '#999',
-    fontSize: 14,
-    marginBottom: 4,
+    fontSize: 13,
+    marginBottom: 2,
   },
   detailValue: {
     color: '#333',
-    fontSize: 16,
+    fontSize: 15,
   },
   amountText: {
     color: '#FF6A6A',
     fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '500',
     color: '#333',
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  timelineHint: {
+    fontSize: 13,
+    color: '#8c8c8c',
+    paddingVertical: 8,
   },
   timelineContainer: {
     flexDirection: 'row',
-    marginLeft: 9, // 对齐时间线圆点
+    marginLeft: 7,
   },
   timelineDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: '#1890ff',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#1890ff30',
   },
   timelineLine: {
     position: 'absolute',
-    left: 8,
-    top: 18,
-    bottom: -22,
+    left: 5,
+    top: 14,
+    bottom: -16,
     width: 2,
     backgroundColor: '#e0e0e0',
   },
   timelineContent: {
     flex: 1,
-    marginLeft: 16,
-    paddingBottom: 24,
+    marginLeft: 12,
+    paddingBottom: 14,
   },
   timelineTime: {
     color: '#999',
-    fontSize: 12,
-    marginBottom: 4,
+    fontSize: 11,
+    marginBottom: 2,
   },
   timelineAction: {
     color: '#333',
-    fontSize: 14,
-    marginBottom: 8,
+    fontSize: 13,
+    marginBottom: 4,
   },
   commentBox: {
     backgroundColor: '#f5f5f5',
-    padding: 8,
+    padding: 6,
     borderRadius: 4,
   },
   commentText: {
     color: '#666',
-    fontSize: 14,
+    fontSize: 13,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingVertical: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#e0e0e0',
   },
   actionButton: {
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+  },
+  actionButtonDisabled: {
+    opacity: 0.5,
   },
   actionLabel: {
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 13,
+    marginTop: 2,
     fontWeight: '500',
   },
 });

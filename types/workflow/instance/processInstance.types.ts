@@ -140,6 +140,21 @@ export type WkNodeDetails = {
   previousStep: boolean;
 };
 
+/** 流程实例节点（审批流程时间轴） */
+export type WkNodeTreeDto = {
+  key: string;
+  title: string;
+  name: string;
+  selected: boolean;
+  receiver?: string;
+  receiverName?: string;
+  signInTime?: string;
+  submitTime?: string;
+  commitmentDeadline?: string;
+  status: number;
+  wkCandidates: WkPointerCandidateDto[];
+};
+
 /**
  * @param {1|2} 1:向前；2：后退；
  */

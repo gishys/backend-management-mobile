@@ -7,7 +7,6 @@ import {
 import ApprovalDetail, {
   ProcessInstanceInfo,
 } from '@/components/workflow/ApprovalDetail';
-import AttachmentViewer from '@/components/workflow/AttachmentViewer';
 import { FormSection } from '@/types/workflow/form/form.types';
 import {
   AttachCatalogue,
@@ -159,12 +158,10 @@ export default function approvaldetails() {
   }, [params.wkInstanceId, initMaterialsAsync, toast]);
 
   return (
-    <>
-      <ApprovalDetail
-        procesInstanceInfo={processBasicInfo}
-        sections={formSections}
-      />
-      <AttachmentViewer attachments={attachments} />
-    </>
+    <ApprovalDetail
+      procesInstanceInfo={processBasicInfo}
+      sections={formSections}
+      attachments={attachments}
+    />
   );
 }
