@@ -29,6 +29,8 @@ import { useToast, Toast, ToastDescription, ToastTitle } from '@/components/ui/t
 import * as Yup from 'yup';
 import { getUserProfileAsync, updateUserProfileAsync } from '@/api/account';
 import type { UserProfile, UpdateUserProfileDto } from '@/types/account/index.types';
+import { ResponsiveContainer } from '@/components/layout';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const validationSchema = Yup.object().shape({
   name: Yup.string().required('姓名不能为空').min(2, '姓名至少需要2个字符'),
@@ -41,6 +43,7 @@ export default function Profile() {
   const router = useRouter();
   const { authState } = useAuth();
   const toast = useToast();
+  const { horizontalPadding } = useResponsive();
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -206,11 +209,11 @@ export default function Profile() {
     >
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* 头像部分 */}
-        <Card className="m-4 p-4 rounded-lg">
+        <Card className="p-4 rounded-xl" style={styles.avatarCard}>
           <VStack space="md" className="items-center">
             <TouchableOpacity
               onPress={handleChangeAvatar}
@@ -236,7 +239,7 @@ export default function Profile() {
         </Card>
 
         {/* 表单部分 */}
-        <Card className="mx-4 mb-4 p-4 rounded-lg">
+        <Card className="p-4 rounded-xl" style={styles.formCard}>
           <VStack space="lg">
             {/* 姓名 */}
             <FormControl isInvalid={!!errors.name}>
@@ -361,13 +364,15 @@ export default function Profile() {
 
   return (
     <RouteGuard>
-      {Platform.OS === 'web' ? (
-        <View style={styles.container}>{renderContent()}</View>
-      ) : (
-        <SafeAreaView style={styles.container} edges={['top']}>
-          {renderContent()}
-        </SafeAreaView>
-      )}
+      <ResponsiveContainer type="form" style={styles.container}>
+        {Platform.OS === 'web' ? (
+          <View style={styles.container}>{renderContent()}</View>
+        ) : (
+          <SafeAreaView style={styles.container} edges={['top']}>
+            {renderContent()}
+          </SafeAreaView>
+        )}
+      </ResponsiveContainer>
     </RouteGuard>
   );
 }
@@ -384,7 +389,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  avatarCard: {
+    marginBottom: 12,
+  },
+  formCard: {
+    marginBottom: 16,
   },
   loadingContainer: {
     flex: 1,
@@ -408,7 +420,6 @@ const styles = StyleSheet.create({
     borderColor: '#fff',
   },
   buttonContainer: {
-    paddingHorizontal: 16,
     marginTop: 8,
   },
   saveButton: {

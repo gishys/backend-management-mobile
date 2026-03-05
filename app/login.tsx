@@ -18,13 +18,15 @@ import { useToast, Toast, ToastTitle, ToastDescription } from '@/components/ui/t
 import { LoginHeader, LoginForm } from '@/components/login';
 import type { LoginFormData } from '@/components/login';
 import { loginTheme } from '@/constants/loginTheme';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const STORAGE_KEYS = {
   REMEMBER_USERNAME: 'remember_username',
   SAVED_USERNAME: 'saved_username',
 } as const;
 
-const CONTENT_MAX_WIDTH = 400;
+/** 手机端表单最大宽度，平板由 useResponsive 提供更大宽度 */
+const CONTENT_MAX_WIDTH_MOBILE = 400;
 
 /**
  * 从接口错误中提取用户可读的登录错误信息
@@ -55,6 +57,9 @@ function getLoginErrorMessage(error: unknown): string {
 }
 
 export default function LoginScreen() {
+  const { contentMaxWidthAuth, horizontalPadding } = useResponsive();
+  const contentMaxWidth = Math.max(CONTENT_MAX_WIDTH_MOBILE, Math.min(contentMaxWidthAuth, 480));
+
   const {
     control,
     handleSubmit,
@@ -171,7 +176,7 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.content}>
+            <View style={[styles.content, { maxWidth: contentMaxWidth, paddingHorizontal: horizontalPadding }]}>
               <LoginHeader />
               <LoginForm
                 control={control}
@@ -209,7 +214,6 @@ const styles = StyleSheet.create({
   },
   content: {
     width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
 });

@@ -1,4 +1,5 @@
 import apiClient from '@/api/client';
+import { getUserProfileAsync } from '@/api/account';
 import { PagedResultDto, PaginationParams } from '@/types/page.types';
 import {
   AttachCatalogue,
@@ -19,7 +20,10 @@ export const fetchMyWkInstances = async (
     '/hxworkflow/workflow/mywkinstances',
     { params },
   );
-  return response.data;
+  const raw = response?.data;
+  const items = Array.isArray(raw?.items) ? raw.items : [];
+  const totalCount = typeof raw?.totalCount === 'number' ? raw.totalCount : 0;
+  return { items, totalCount };
 };
 
 export const fetchMyWkInstance = async (params: {
@@ -81,14 +85,29 @@ export async function getWkInstancePointerCandidateAsync(paras: {
   );
 }
 
-/** 提交业务流程（后端 WkActivityInputDto 使用 PascalCase） */
+/**
+ * 提交业务流程（后端 HxWorkflowController 使用 [FromBody] WkActivityInputDto，需传 PascalCase）。
+ * 会在请求体 data 中自动注入当前用户信息（CurrentUserId、CurrentUserName），
+ * 以便后端在 [AllowAnonymous] 或未解析 JWT 时仍能从 body 获取当前操作用户。
+ */
 export async function StartActivityAsync(data: WkActivityCreateDto) {
-  const body = {
-    ActivityName: data.activityName,
-    WorkflowId: data.workflowId,
-    Data: data.data,
-  };
-  return await apiClient.post<null>('/hxworkflow/workflow/activity', body);
+  let payload = data;
+  try {
+    const profile = await getUserProfileAsync();
+    if (profile?.id != null) {
+      payload = {
+        ...data,
+        data: {
+          ...data.data,
+          CurrentUserId: profile.id,
+          CurrentUserName: profile.name ?? profile.id,
+        },
+      };
+    }
+  } catch (e) {
+    console.warn('[StartActivityAsync] 获取当前用户信息失败，将不携带用户字段提交', e);
+  }
+  return await apiClient.post<null>('/hxworkflow/workflow/activity', payload);
 }
 
 /**获取流程模板详情 */

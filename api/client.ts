@@ -23,13 +23,20 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// 请求拦截器（添加 Token）
+// 请求拦截器（添加 Bearer Token + 防伪令牌）
 apiClient.interceptors.request.use(async (config) => {
   (config as any).metadata = { startTime: Date.now() };
   const token = await AsyncStorage.getItem('userToken');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  // 防伪令牌（与后端 Antiforgery 校验对应，有则带上）
+  const antiforgeryToken = await AsyncStorage.getItem('RequestVerificationToken');
+  if (antiforgeryToken) {
+    config.headers['RequestVerificationToken'] = antiforgeryToken;
+  }
+  config.xsrfCookieName = 'XSRF-TOKEN';
+  config.xsrfHeaderName = 'RequestVerificationToken';
   return config;
 });
 
@@ -73,5 +80,14 @@ apiClient.interceptors.response.use(
     return Promise.reject(error);
   },
 );
+
+/** 保存防伪令牌，供请求拦截器自动携带（登录或调用后端 antiforgery 接口后调用） */
+export async function setRequestVerificationToken(token: string | null) {
+  if (token != null) {
+    await AsyncStorage.setItem('RequestVerificationToken', token);
+  } else {
+    await AsyncStorage.removeItem('RequestVerificationToken');
+  }
+}
 
 export default apiClient;

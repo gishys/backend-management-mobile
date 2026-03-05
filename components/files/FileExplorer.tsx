@@ -13,6 +13,7 @@ import {
   Dimensions,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  useWindowDimensions,
 } from 'react-native';
 import { AntDesign, MaterialIcons, Fontisto } from '@expo/vector-icons';
 import {
@@ -407,6 +408,8 @@ type PreviewModalProps = {
   onOpenPdf: (file: AttachFile) => void;
   onOpenInBrowser: (file: AttachFile) => void;
   loadingPdf: boolean;
+  screenWidth: number;
+  screenHeight: number;
 };
 
 const PreviewModal: React.FC<PreviewModalProps> = ({
@@ -418,16 +421,19 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
   onOpenPdf,
   onOpenInBrowser,
   loadingPdf,
+  screenWidth,
+  screenHeight,
 }) => {
   const hasImages = imageList.length > 0;
   const hasPdfs = pdfList.length > 0;
   const hasOther = otherFiles.length > 0;
   const imageScrollRef = useRef<ScrollView>(null);
   const [imageIndex, setImageIndex] = useState(0);
+  const imagePageHeight = screenHeight - (Platform.OS === 'ios' ? 100 : 60);
 
   const onImageScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const offset = e.nativeEvent.contentOffset.x;
-    const index = Math.round(offset / SCREEN_WIDTH);
+    const index = Math.round(offset / screenWidth);
     setImageIndex(index);
   };
 
@@ -454,10 +460,10 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
               style={styles.imageScrollView}
             >
               {imageList.map((img, idx) => (
-                <View key={idx} style={styles.imagePage}>
+                <View key={idx} style={[styles.imagePage, { width: screenWidth, height: imagePageHeight }]}>
                   <Image
                     source={{ uri: img.url }}
-                    style={styles.previewImage}
+                    style={[styles.previewImage, { width: screenWidth, height: imagePageHeight }]}
                     contentFit="contain"
                   />
                 </View>
@@ -551,6 +557,7 @@ const PreviewModal: React.FC<PreviewModalProps> = ({
 
 // ============ 主组件 ============
 export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({ data }) => {
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewImages, setPreviewImages] = useState<IImageInfo[]>([]);
@@ -637,6 +644,8 @@ export const FileExplorer: React.FC<{ data: AttachCatalogue[] }> = ({ data }) =>
         onOpenPdf={handleOpenPdf}
         onOpenInBrowser={handleOpenInBrowser}
         loadingPdf={loadingPdf}
+        screenWidth={screenWidth}
+        screenHeight={screenHeight}
       />
 
       <PdfViewerModal

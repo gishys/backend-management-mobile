@@ -18,14 +18,16 @@ import RouteGuard from '../../components/Common/RouteGuard';
 import React from 'react';
 import ProcessInstanceCard from '@/components/workflow/ProcessInstanceCard';
 import { useNavigation } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { useToast, Toast, ToastTitle, ToastDescription } from '@/components/ui/toast';
+import { ResponsiveContainer } from '@/components/layout';
+import { useResponsive } from '@/hooks/useResponsive';
 
 const PAGE_SIZE = 10;
 
 export default function OnlineApprove() {
   const navigation = useNavigation();
   const toast = useToast();
+  const { isTablet, horizontalPadding } = useResponsive();
   const [data, setData] = useState<ProcessInstance[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -61,16 +63,16 @@ export default function OnlineApprove() {
         }
 
         const newData = await fetchMyWkInstances(params);
+        const items = Array.isArray(newData?.items) ? newData.items : [];
+        const totalCount = typeof newData?.totalCount === 'number' ? newData.totalCount : 0;
 
         setData((prev) => {
-          const updatedData = isRefreshing
-            ? newData.items
-            : [...prev, ...newData.items];
+          const updatedData = isRefreshing ? items : [...prev, ...items];
           return updatedData;
         });
 
-        const currentTotalLoaded = skipCount + newData.items.length;
-        setHasMore(newData.totalCount > currentTotalLoaded);
+        const currentTotalLoaded = skipCount + items.length;
+        setHasMore(totalCount > currentTotalLoaded);
       } catch (error: any) {
         console.error('加载审批数据失败:', error);
         
@@ -164,7 +166,7 @@ export default function OnlineApprove() {
 
   const renderContent = () => (
     <>
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { paddingHorizontal: horizontalPadding }]}>
         <Input variant="outline" size="md">
           <InputSlot className="pl-3">
             <InputIcon as={SearchIcon} />
@@ -178,12 +180,24 @@ export default function OnlineApprove() {
       </View>
       <FlatList<ProcessInstance>
         data={data}
-        renderItem={({ item }) => <ProcessInstanceCard item={item} />}
+        renderItem={({ item }) =>
+          isTablet ? (
+            <View style={styles.cardWrapper}>
+              <ProcessInstanceCard item={item} />
+            </View>
+          ) : (
+            <ProcessInstanceCard item={item} />
+          )
+        }
         keyExtractor={(item) => item.id}
+        numColumns={isTablet ? 2 : 1}
+        key={isTablet ? 'tablet-2col' : 'phone-1col'}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         ListFooterComponent={ListFooter}
         initialNumToRender={PAGE_SIZE}
+        contentContainerStyle={isTablet ? styles.listContentTablet : undefined}
+        columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -216,7 +230,9 @@ export default function OnlineApprove() {
 
   return (
     <RouteGuard>
-      <View style={styles.container}>{renderContent()}</View>
+      <ResponsiveContainer type="list" style={styles.container}>
+        {renderContent()}
+      </ResponsiveContainer>
     </RouteGuard>
   );
 }
@@ -227,7 +243,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   searchContainer: {
-    margin: 8,
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  listContentTablet: {
+    paddingHorizontal: 8,
+    paddingBottom: 24,
+  },
+  columnWrapper: {
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    flex: 1,
+    marginHorizontal: 4,
+    minWidth: 0,
   },
   loadingIndicator: {
     marginVertical: 20,

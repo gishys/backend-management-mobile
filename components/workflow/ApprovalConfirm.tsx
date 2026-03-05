@@ -7,6 +7,7 @@ import {
   Text,
   StyleSheet,
   SafeAreaView,
+  Keyboard,
 } from 'react-native';
 import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { AntDesign } from '@expo/vector-icons';
@@ -140,26 +141,26 @@ export default function ApprovalConfirm({
     Boolean(formData.data.Remark?.trim()) &&
     Boolean(formData.data.Candidates?.trim());
 
-  const verifyAttachment = async () => {
-    //验证附件是否上传
-    const catalogueResult = await verifyCataloguesAsync(
-      [{ reference: processInstanceInfo.reference, referenceType: 1 }],
-      { details: false },
-    );
-    if (catalogueResult && catalogueResult?.profileInfo.length > 0) {
-      let meg = '';
-      catalogueResult.profileInfo.forEach((ret) => {
-        meg += `${ret.message}`;
-      });
-      console.log(meg);
-      handleToast(`请上传必填附件！`);
-      return true;
-    }
-    return false;
-  };
+  // const verifyAttachment = async () => {
+  //   //验证附件是否上传
+  //   const catalogueResult = await verifyCataloguesAsync(
+  //     [{ reference: processInstanceInfo.reference, referenceType: 1 }],
+  //     { details: false },
+  //   );
+  //   if (catalogueResult && catalogueResult?.profileInfo.length > 0) {
+  //     let meg = '';
+  //     catalogueResult.profileInfo.forEach((ret) => {
+  //       meg += `${ret.message}`;
+  //     });
+  //     console.log(meg);
+  //     handleToast(`请上传必填附件！`);
+  //     return true;
+  //   }
+  //   return false;
+  // };
   const handleSubmit = async () => {
     try {
-      if (await verifyAttachment()) return;
+      // if (await verifyAttachment()) return;
       const { error } = await validateAsync(formData);
       if (error) {
         if (error instanceof Yup.ValidationError) {
@@ -235,9 +236,9 @@ export default function ApprovalConfirm({
       if (status === 400) {
         console.warn('[ApprovalConfirm] StartActivity 400', {
           requestBody: {
-            ActivityName: formData.activityName,
-            WorkflowId: formData.workflowId,
-            Data: formData.data,
+            activityName: formData.activityName,
+            workflowId: formData.workflowId,
+            data: formData.data,
           },
           responseBody: body != null
             ? typeof body === 'string'
@@ -269,8 +270,11 @@ export default function ApprovalConfirm({
           <Heading size="md">审批</Heading>
           <TouchableOpacity
             style={styles.closeButton}
-            onPress={() => setVisible(false)}
-            hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            onPress={() => {
+              Keyboard.dismiss();
+              setVisible(false);
+            }}
+            hitSlop={{ top: 24, bottom: 24, left: 24, right: 24 }}
             activeOpacity={0.7}
           >
             <AntDesign name="close" size={22} color="#333" />
@@ -369,6 +373,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#e8e8e8',
     backgroundColor: '#fff',
+    zIndex: 100,
+    elevation: 10,
   },
   content: {
     flex: 1,

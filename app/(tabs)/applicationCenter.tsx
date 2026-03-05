@@ -22,6 +22,8 @@ import {
   RecentTrendSection,
   DurationSection,
 } from '@/components/stats';
+import { ResponsiveContainer } from '@/components/layout';
+import { useResponsive } from '@/hooks/useResponsive';
 
 /**
  * 应用中心 - 工作流统计仪表盘
@@ -30,6 +32,7 @@ import {
  */
 export default function ApplicationCenter() {
   const toast = useToast();
+  const { horizontalPadding } = useResponsive();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [dashboard, setDashboard] = useState<DashboardStatDto | null>(null);
@@ -94,10 +97,10 @@ export default function ApplicationCenter() {
 
   return (
     <RouteGuard>
-      <View style={styles.container}>
+      <ResponsiveContainer type="dashboard" style={styles.container}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding }]}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
@@ -122,7 +125,7 @@ export default function ApplicationCenter() {
             </View>
           )}
         </ScrollView>
-      </View>
+      </ResponsiveContainer>
     </RouteGuard>
   );
 }

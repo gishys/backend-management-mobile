@@ -4,6 +4,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Text,
+  ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AntDesign, Feather } from '@expo/vector-icons';
@@ -21,6 +22,7 @@ import RejectConfirm from './RejectConfirm';
 import ReadOnlyForm from '@/components/form/ReadOnlyForm';
 import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { FileExplorer } from '@/components/files/FileExplorer';
+import { useResponsive } from '@/hooks/useResponsive';
 
 /** 审批流程时间轴单条 */
 export type ApprovalTimelineItem = {
@@ -53,6 +55,7 @@ export default function ApprovalDetail({
   sections,
   attachments = [],
 }: ApprovalDetailsProps) {
+  const { isTablet, horizontalPadding, contentMaxWidthForm } = useResponsive();
   const [approvalConfirmVisible, setApprovalConfirmVisible] =
     useState<boolean>(false);
   const [rejectConfirmVisible, setRejectConfirmVisible] =
@@ -209,6 +212,18 @@ export default function ApprovalDetail({
     }));
   }, [sections]);
 
+  const contentContainerStyle: ViewStyle[] = [
+    styles.contentContainer,
+    { paddingHorizontal: horizontalPadding },
+  ];
+  if (isTablet) {
+    contentContainerStyle.push({
+      maxWidth: contentMaxWidthForm,
+      alignSelf: 'center',
+      width: '100%',
+    } as ViewStyle);
+  }
+
   return (
     <View style={styles.page}>
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -219,31 +234,31 @@ export default function ApprovalDetail({
           />
         </View>
       </SafeAreaView>
-      {/* 右侧竖排「查看附件」按钮，始终显示 */}
+      {/* 右侧竖排「查看附件」按钮，平板时略增大触控区 */}
       <TouchableOpacity
-        style={styles.verticalAttachmentButton}
+        style={[styles.verticalAttachmentButton, isTablet && styles.verticalAttachmentButtonTablet]}
         onPress={openAttachment}
         activeOpacity={0.8}
         accessibilityLabel="查看附件"
       >
         <View style={styles.verticalAttachmentContent}>
-          <Text style={styles.verticalAttachmentText}>查</Text>
-          <Text style={styles.verticalAttachmentText}>看</Text>
-          <Text style={styles.verticalAttachmentText}>附</Text>
-          <Text style={styles.verticalAttachmentText}>件</Text>
+          <Text style={[styles.verticalAttachmentText, isTablet && styles.verticalAttachmentTextTablet]}>查</Text>
+          <Text style={[styles.verticalAttachmentText, isTablet && styles.verticalAttachmentTextTablet]}>看</Text>
+          <Text style={[styles.verticalAttachmentText, isTablet && styles.verticalAttachmentTextTablet]}>附</Text>
+          <Text style={[styles.verticalAttachmentText, isTablet && styles.verticalAttachmentTextTablet]}>件</Text>
         </View>
       </TouchableOpacity>
 
       <ScrollView
         style={styles.content}
-        contentContainerStyle={styles.contentContainer}
+        contentContainerStyle={contentContainerStyle}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.formWrapper}>
           <ReadOnlyForm sections={normalizedSections} />
         </View>
-        <View style={styles.card}>
+        <View style={[styles.card, isTablet && styles.cardTablet]}>
           <Text style={styles.sectionTitle}>审批流程</Text>
           {timelineLoading ? (
             <Text style={styles.timelineHint}>加载中...</Text>
@@ -261,7 +276,7 @@ export default function ApprovalDetail({
         </View>
       </ScrollView>
       <SafeAreaView style={styles.container} edges={['bottom']}>
-        <View style={styles.footer}>
+        <View style={[styles.footer, isTablet && styles.footerTablet]}>
           <ActionButton
             icon="check-circle"
             label="通过"
@@ -469,6 +484,12 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     shadowRadius: 6,
   },
+  verticalAttachmentButtonTablet: {
+    paddingVertical: 12,
+    paddingHorizontal: 6,
+    borderTopLeftRadius: 8,
+    borderBottomLeftRadius: 8,
+  },
   verticalAttachmentContent: {
     flexDirection: 'column',
     alignItems: 'center',
@@ -479,6 +500,9 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     lineHeight: 22,
+  },
+  verticalAttachmentTextTablet: {
+    fontSize: 16,
   },
   sheetHeader: {
     flexDirection: 'row',
@@ -574,6 +598,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  cardTablet: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 12,
+    borderRadius: 12,
+  },
   detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,6 +689,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: '#e0e0e0',
+  },
+  footerTablet: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
   actionButton: {
     alignItems: 'center',

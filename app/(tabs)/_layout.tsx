@@ -5,6 +5,7 @@ import { AntDesign, MaterialIcons, FontAwesome } from '@expo/vector-icons';
 
 import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useResponsive } from '@/hooks/useResponsive';
 
 /**
  * 标签页配置类型
@@ -83,6 +84,12 @@ const getIconComponent = (
 export default function TabLayout() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { isTablet } = useResponsive();
+
+  // 平板：标签栏更高、字体略大，便于触控与阅读
+  const tabBarHeight = isTablet ? (Platform.OS === 'ios' ? 72 : 64) : (Platform.OS === 'ios' ? 88 : 60);
+  const tabBarPaddingBottom = Platform.OS === 'ios' ? (isTablet ? 20 : 28) : 8;
+  const headerTitleFontSize = isTablet ? 20 : 18;
 
   // 在线审批页面的 headerRight - 使用 useCallback 避免重新创建
   const ApproveHeaderRight = useCallback(
@@ -118,17 +125,17 @@ export default function TabLayout() {
         backgroundColor: colors.background,
         borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
         borderTopColor: colorScheme === 'dark' ? '#333' : '#e0e0e0',
-        height: Platform.OS === 'ios' ? 88 : 60,
-        paddingBottom: Platform.OS === 'ios' ? 28 : 8,
-        paddingTop: 8,
-        elevation: 8, // Android shadow
-        shadowColor: '#000', // iOS shadow
+        height: tabBarHeight,
+        paddingBottom: tabBarPaddingBottom,
+        paddingTop: isTablet ? 12 : 8,
+        elevation: 8,
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
       },
       tabBarLabelStyle: {
-        fontSize: 12,
+        fontSize: isTablet ? 13 : 12,
         fontWeight: '500' as const,
         marginTop: 4,
       },
@@ -146,7 +153,7 @@ export default function TabLayout() {
       },
       headerTintColor: colors.text,
       headerTitleStyle: {
-        fontSize: 18,
+        fontSize: headerTitleFontSize,
         fontWeight: '600' as const,
       },
       headerShadowVisible: false,
@@ -156,7 +163,7 @@ export default function TabLayout() {
         paddingVertical: 4,
       },
     }),
-    [colors, colorScheme],
+    [colors, colorScheme, isTablet, tabBarHeight, tabBarPaddingBottom, headerTitleFontSize],
   );
 
   // 使用 useMemo 缓存标签页配置，避免每次渲染都重新创建

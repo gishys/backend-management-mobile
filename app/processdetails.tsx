@@ -36,10 +36,13 @@ import { Heading } from '@/components/ui/heading';
 import { AntDesign, Feather, MaterialIcons } from '@expo/vector-icons';
 import { createShadowStyle } from '@/utils/shadowStyles';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ResponsiveContainer } from '@/components/layout';
+import { useResponsive } from '@/hooks/useResponsive';
 
 export default function ProcessDetails() {
   const params = useLocalSearchParams();
   const navigation = useNavigation();
+  const { horizontalPadding, isTablet } = useResponsive();
   const [formSections, setFormSections] = useState<FormSection[]>([]);
   const [attachments, setAttachments] = useState<AttachCatalogue[]>([]);
   const [processInstanceInfo, setProcessInstanceInfo] = useState<ProcessInstanceInfo | null>(null);
@@ -239,9 +242,11 @@ export default function ProcessDetails() {
 
   return (
     <>
-      <View style={styles.wrapper}>
-        {renderContent()}
-      </View>
+      <ResponsiveContainer type="form" style={styles.wrapperOuter}>
+        <View style={[styles.wrapper, { paddingHorizontal: horizontalPadding }]}>
+          {renderContent()}
+        </View>
+      </ResponsiveContainer>
       <Drawer
         isOpen={drawerVisible}
         onClose={() => {
@@ -271,7 +276,7 @@ export default function ProcessDetails() {
         </DrawerContent>
       </Drawer>
       <SafeAreaView style={styles.buttonContainer}>
-        <View style={styles.buttonGroup}>
+        <View style={[styles.buttonGroup, isTablet && styles.buttonGroupTablet]}>
           {/* 驳回按钮 */}
           <TouchableOpacity
             style={[styles.button, styles.rejectButton]}
@@ -356,6 +361,9 @@ export default function ProcessDetails() {
 
 const styles = StyleSheet.create({
   //控制按钮
+  wrapperOuter: {
+    flex: 1,
+  },
   buttonContainer: {
     backgroundColor: '#fff',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -366,6 +374,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
+  },
+  buttonGroupTablet: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    maxWidth: 720,
+    alignSelf: 'center',
+    width: '100%',
   },
   button: {
     alignItems: 'center',

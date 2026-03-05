@@ -22,6 +22,8 @@ import { useNavigation } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { statsTheme } from '@/components/stats';
 import { useToast, Toast, ToastTitle, ToastDescription } from '@/components/ui/toast';
+import { ResponsiveContainer } from '@/components/layout';
+import { useResponsive } from '@/hooks/useResponsive';
 
 /** 每页条数 */
 const PAGE_SIZE = 10;
@@ -65,6 +67,7 @@ function MyProcessesSearchBar({
 export default function MyProcesses() {
   const navigation = useNavigation();
   const toast = useToast();
+  const { isTablet, horizontalPadding } = useResponsive();
   const [data, setData] = useState<ProcessInstance[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -242,22 +245,39 @@ export default function MyProcesses() {
     [loading, data.length, error, loadData]
   );
 
+  const listContentStyle = [
+    data.length === 0 ? styles.listContentEmpty : styles.listContent,
+    isTablet && styles.listContentTablet,
+  ];
   const content = (
     <>
-      <MyProcessesSearchBar
-        value={searchText}
-        onChangeText={handleSearchChange}
-      />
+      <View style={[styles.searchWrap, { paddingHorizontal: horizontalPadding }]}>
+        <MyProcessesSearchBar
+          value={searchText}
+          onChangeText={handleSearchChange}
+        />
+      </View>
       <FlatList<ProcessInstance>
         data={data}
-        renderItem={renderItem}
+        renderItem={({ item }) =>
+          isTablet ? (
+            <View style={styles.cardWrapper}>
+              <ProcessInstanceCard item={item} />
+            </View>
+          ) : (
+            <ProcessInstanceCard item={item} />
+          )
+        }
         keyExtractor={keyExtractor}
+        numColumns={isTablet ? 2 : 1}
+        key={isTablet ? 'tablet-2col' : 'phone-1col'}
         onEndReached={onEndReached}
         onEndReachedThreshold={0.5}
         ListFooterComponent={ListFooterComponent}
         ListEmptyComponent={ListEmptyComponent}
         initialNumToRender={PAGE_SIZE}
-        contentContainerStyle={data.length === 0 ? styles.listContentEmpty : styles.listContent}
+        contentContainerStyle={listContentStyle}
+        columnWrapperStyle={isTablet ? styles.columnWrapper : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -274,13 +294,15 @@ export default function MyProcesses() {
 
   return (
     <RouteGuard>
-      {Platform.OS === 'web' ? (
-        <View style={styles.container}>{content}</View>
-      ) : (
-        <SafeAreaView style={styles.container} edges={[]}>
-          {content}
-        </SafeAreaView>
-      )}
+      <ResponsiveContainer type="list" style={styles.container}>
+        {Platform.OS === 'web' ? (
+          <View style={styles.container}>{content}</View>
+        ) : (
+          <SafeAreaView style={styles.container} edges={[]}>
+            {content}
+          </SafeAreaView>
+        )}
+      </ResponsiveContainer>
     </RouteGuard>
   );
 }
@@ -291,12 +313,24 @@ const styles = StyleSheet.create({
     backgroundColor: statsTheme.colors.background,
   },
   searchWrap: {
-    paddingHorizontal: statsTheme.spacing.page,
     paddingTop: statsTheme.spacing.sm,
     paddingBottom: statsTheme.spacing.xs,
   },
   listContent: {
     paddingBottom: statsTheme.spacing.section,
+  },
+  listContentTablet: {
+    paddingHorizontal: 8,
+  },
+  columnWrapper: {
+    paddingHorizontal: 4,
+    marginBottom: 8,
+    justifyContent: 'space-between',
+  },
+  cardWrapper: {
+    flex: 1,
+    marginHorizontal: 4,
+    minWidth: 0,
   },
   listContentEmpty: {
     flexGrow: 1,

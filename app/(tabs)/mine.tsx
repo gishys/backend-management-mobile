@@ -22,6 +22,8 @@ import { HStack } from '@/components/ui/hstack';
 import { VStack } from '@/components/ui/vstack';
 import { AntDesign, FontAwesome, MaterialIcons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { ResponsiveContainer } from '@/components/layout';
+import { useResponsive } from '@/hooks/useResponsive';
 
 interface MenuItem {
   id: string;
@@ -36,6 +38,7 @@ interface MenuItem {
 export default function MineScreen() {
   const { authState, logout } = useAuth();
   const router = useRouter();
+  const { horizontalPadding, isTablet } = useResponsive();
   const [loading, setLoading] = useState(false);
 
   // 从 token 中解析用户信息（这里假设 token 是 JWT，实际应该从 API 获取）
@@ -148,14 +151,14 @@ export default function MineScreen() {
 
   return (
     <RouteGuard>
-      <View style={styles.container}>
+      <ResponsiveContainer type="list" style={styles.container}>
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingHorizontal: horizontalPadding }]}
           showsVerticalScrollIndicator={false}
         >
           {/* 用户信息卡片 */}
-          <Card className="m-4 p-4 rounded-lg">
+          <Card className="p-4 rounded-xl" style={styles.userCard}>
             <HStack space="md" className="items-center">
               <Avatar size="lg" className="bg-primary-500">
                 <AvatarFallbackText className="text-white font-bold">
@@ -180,16 +183,17 @@ export default function MineScreen() {
           </Card>
 
           {/* 菜单列表 */}
-          <View style={styles.menuContainer}>
-            {menuItems.map((item, index) => (
+          <View style={[styles.menuContainer, isTablet && styles.menuContainerTablet]}>
+            {menuItems.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 activeOpacity={0.7}
                 onPress={item.onPress}
                 disabled={loading && item.id === 'logout'}
+                style={isTablet ? styles.menuItemTablet : undefined}
               >
                 <Card
-                  className={`mx-4 mb-2 p-4 rounded-lg ${
+                  className={`mb-2 p-4 rounded-xl ${
                     item.danger ? 'bg-red-50' : ''
                   }`}
                 >
@@ -220,7 +224,7 @@ export default function MineScreen() {
             </Text>
           </View>
         </ScrollView>
-      </View>
+      </ResponsiveContainer>
     </RouteGuard>
   );
 }
@@ -234,10 +238,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  userCard: {
+    marginBottom: 8,
   },
   menuContainer: {
     marginTop: 8,
+  },
+  menuContainerTablet: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -6,
+  },
+  menuItemTablet: {
+    width: '50%',
+    paddingHorizontal: 6,
+    minWidth: 0,
   },
   iconContainer: {
     width: 24,
@@ -246,6 +264,5 @@ const styles = StyleSheet.create({
   versionContainer: {
     marginTop: 24,
     marginBottom: 16,
-    paddingHorizontal: 16,
   },
 });

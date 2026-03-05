@@ -77,6 +77,7 @@ export function BottomSheetModal({
     if (!closeOnBackdrop) return;
     const elapsed = Date.now() - openedAt.current;
     if (elapsed < backdropCloseDelayMs) return;
+    Keyboard.dismiss();
     onClose();
   };
 

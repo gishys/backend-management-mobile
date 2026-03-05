@@ -152,6 +152,7 @@ const TreeList = forwardRef<TreeListRef, TreeListProps>(function TreeList(
         ListHeaderComponent={ListHeaderComponent}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       />
     </View>
   );

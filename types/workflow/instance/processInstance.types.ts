@@ -257,6 +257,10 @@ export type WkActivityDataDto = {
   Remark: string;
   Candidates: string;
   ExecutionType: WkNodeType;
+  /** 当前操作用户 ID（提交活动时由前端或后端注入，供工作流 StepBody 识别操作用户） */
+  CurrentUserId?: string;
+  /** 当前操作用户名（提交活动时由前端或后端注入） */
+  CurrentUserName?: string;
 };
 
 export type WkConditionNode = {
