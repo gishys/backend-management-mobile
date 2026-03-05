@@ -9,7 +9,10 @@
     "web": "DARK_MODE=media expo start --web",
     "proxy": "node scripts/dev-proxy.js",
     "web:dev": "npm run proxy & DARK_MODE=media expo start --web",
-    "test": "jest --watchAll"
+    "test": "jest --watchAll",
+    "prebuild:android": "expo prebuild --platform android --no-install",
+    "android:apk": "cd android && .\\gradlew.bat assembleRelease",
+    "android:apk:debug": "cd android && .\\gradlew.bat assembleDebug"
   },
   "jest": {
     "preset": "jest-expo"

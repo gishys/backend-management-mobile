@@ -25,62 +25,59 @@ export default function approvaldetails() {
     useState<ProcessInstanceInfo>();
 
   // 异步初始化材料 - 不阻塞页面渲染
-  const initMaterialsAsync = useCallback(
-    async (instance: WorkflowInstance) => {
-      try {
-        // 检查是否需要初始化材料
-        if (instance.currentExecutionPointer.isInitMaterials) {
-          return; // 已经初始化过，直接返回
-        }
-
-        // 检查是否有材料需要创建
-        if (
-          !instance.currentExecutionPointer.materials ||
-          instance.currentExecutionPointer.materials.length === 0
-        ) {
-          return; // 没有材料需要创建
-        }
-
-        // 异步创建材料目录，不阻塞页面渲染
-        await createManyCatalogueAsync(
-          5,
-          instance.currentExecutionPointer.materials,
-        );
-
-        // 标记材料已初始化
-        await InitMaterialsAsync({
-          executionPointerId: instance.currentExecutionPointer.id,
-        });
-
-        // 静默执行，不显示成功提示（避免干扰用户）
-        console.log('材料初始化成功');
-      } catch (error: any) {
-        // 错误处理：记录日志但不阻塞页面
-        console.error('初始化材料失败:', error);
-        
-        const errorMessage =
-          error?.response?.data?.message ||
-          error?.response?.data?.error?.message ||
-          error?.message ||
-          '材料初始化失败，但不影响页面使用';
-
-        // 显示错误提示，但不阻塞用户操作
-        toast.show({
-          placement: 'top',
-          duration: 4000,
-          render: ({ id }) => {
-            return (
-              <Toast nativeID={`toast-${id}`} action="error" variant="solid">
-                <ToastTitle>材料初始化失败</ToastTitle>
-                <ToastDescription>{errorMessage}</ToastDescription>
-              </Toast>
-            );
-          },
-        });
+  const initMaterialsAsync = async (instance: WorkflowInstance) => {
+    try {
+      // 检查是否需要初始化材料
+      if (instance.currentExecutionPointer.isInitMaterials) {
+        return; // 已经初始化过，直接返回
       }
-    },
-    [toast],
-  );
+
+      // 检查是否有材料需要创建
+      if (
+        !instance.currentExecutionPointer.materials ||
+        instance.currentExecutionPointer.materials.length === 0
+      ) {
+        return; // 没有材料需要创建
+      }
+
+      // 异步创建材料目录，不阻塞页面渲染
+      await createManyCatalogueAsync(
+        5,
+        instance.currentExecutionPointer.materials,
+      );
+
+      // 标记材料已初始化
+      await InitMaterialsAsync({
+        executionPointerId: instance.currentExecutionPointer.id,
+      });
+
+      // 静默执行，不显示成功提示（避免干扰用户）
+      console.log('材料初始化成功');
+    } catch (error: any) {
+      // 错误处理：记录日志但不阻塞页面
+      console.error('初始化材料失败:', error);
+      
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.response?.data?.error?.message ||
+        error?.message ||
+        '材料初始化失败，但不影响页面使用';
+
+      // 显示错误提示，但不阻塞用户操作
+      toast.show({
+        placement: 'top',
+        duration: 4000,
+        render: ({ id }) => {
+          return (
+            <Toast nativeID={`toast-${id}`} action="error" variant="solid">
+              <ToastTitle>材料初始化失败</ToastTitle>
+              <ToastDescription>{errorMessage}</ToastDescription>
+            </Toast>
+          );
+        },
+      });
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -155,7 +152,9 @@ export default function approvaldetails() {
         });
       }
     })();
-  }, [params.wkInstanceId, initMaterialsAsync, toast]);
+    // 只在实例 ID 变更时重新拉取，避免 Toast 触发无限重试
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.wkInstanceId]);
 
   return (
     <ApprovalDetail
